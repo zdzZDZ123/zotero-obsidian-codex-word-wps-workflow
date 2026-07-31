@@ -145,6 +145,22 @@ cd zotero-obsidian-codex-research-workflow
 预期结果是：每个重要论断都能回溯到真实来源，而且在开启新的 Codex 对话后，
 工作流仍可依靠持久化知识继续运行，而不是依赖旧聊天记录。
 
+### 灰度运行证据
+
+2026-07-31 对本机已安装的桌面环境进行了隐私安全的实机检查：公开 Obsidian
+Vault 成功打开，Claudian 2.0.34 已加载并显示 Codex 侧栏，Zotero 9.0.6 已加载
+所需插件，`llm-for-zotero` 3.8.31 的实时 Codex 连接测试返回 `OK`，同一页面还
+显示 Zotero MCP 已连接并注册 15 个工具。
+
+| Obsidian 公开部署 | Zotero-Codex 实时测试 |
+|---|---|
+| ![Obsidian 公开 Vault 运行截图](docs/assets/runtime-evidence/obsidian-public-vault-runtime.png) | ![Zotero Codex 冒烟测试通过](docs/assets/runtime-evidence/zotero-codex-smoke-test-passed.png) |
+
+完整的脱敏截图与证据边界见
+[`docs/runtime-evidence.md`](docs/runtime-evidence.md)，原始 PNG 的 SHA-256 摘要见
+[`docs/runtime-evidence-manifest.json`](docs/runtime-evidence-manifest.json)。这些截图
+证明插件已实际加载且本地连接可用；上面的六步链路仍是来源可追溯性的发布级验收。
+
 ## 安全边界
 
 不要提交 Zotero Profile、私人群组库、受许可限制的 PDF、个人笔记、未发表论文、
