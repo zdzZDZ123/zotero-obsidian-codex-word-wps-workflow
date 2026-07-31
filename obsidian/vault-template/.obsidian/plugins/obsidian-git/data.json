@@ -1,0 +1,19 @@
+{
+    "commitMessage":  "知识库备份：{{date}}",
+    "autoCommitMessage":  "知识库自动备份：{{date}}",
+    "commitMessageScript":  "",
+    "commitDateFormat":  "YYYY-MM-DD HH:mm:ss",
+    "autoSaveInterval":  30,
+    "autoPushInterval":  0,
+    "autoPullInterval":  0,
+    "autoPullOnBoot":  false,
+    "disablePush":  true,
+    "pullBeforePush":  false,
+    "disablePopups":  true,
+    "showErrorNotices":  true,
+    "showStatusBar":  true,
+    "autoBackupAfterFileChange":  false,
+    "refreshSourceControl":  true,
+    "basePath":  "",
+    "gitDir":  ""
+}

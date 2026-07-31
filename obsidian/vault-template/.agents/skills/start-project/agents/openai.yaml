@@ -1,0 +1,4 @@
+interface:
+  display_name: "Start Project"
+  short_description: "Create an actionable knowledge project"
+  default_prompt: "Use $start-project to create an actionable project from this goal."

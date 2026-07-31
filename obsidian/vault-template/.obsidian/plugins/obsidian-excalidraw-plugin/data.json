@@ -1,0 +1,17 @@
+{
+  "folder": "30-Resources/Visuals/Excalidraw",
+  "cropFolder": "98-Assets/Excalidraw",
+  "annotateFolder": "98-Assets/Excalidraw",
+  "embedUseExcalidrawFolder": true,
+  "scriptFolderPath": "90-System/Excalidraw Scripts",
+  "fontAssetsPath": "98-Assets/Excalidraw/Fonts",
+  "loadChineseFonts": false,
+  "compress": true,
+  "autosave": true,
+  "renderImageInMarkdownReadingMode": true,
+  "renderImageInHoverPreviewForMDNotes": true,
+  "renderImageInMarkdownToPDF": true,
+  "experimentalLivePreview": true,
+  "enableOnloadScripts": false,
+  "enableCommandLinks": false
+}

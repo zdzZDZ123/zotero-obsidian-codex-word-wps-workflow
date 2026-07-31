@@ -1,0 +1,35 @@
+# Personal research data
+*.pdf
+*.epub
+*.sqlite
+*.sqlite-*
+*.db
+*.bib
+*.ris
+*.enw
+
+# Secrets and machine state
+.env
+.env.*
+!.env.example
+auth.json
+credentials.json
+cookies.json
+workspace.json
+workspace-mobile.json
+.DS_Store
+Thumbs.db
+
+# Third-party binaries and release bundles
+*.xpi
+*.zip
+*.7z
+*.dmg
+*.exe
+*.msi
+obsidian/vault-template/.obsidian/plugins/*/main.js
+obsidian/vault-template/.obsidian/plugins/*/manifest.json
+
+# Temporary audit output
+audit-output/
+*.log

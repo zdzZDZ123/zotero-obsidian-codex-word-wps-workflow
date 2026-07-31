@@ -1,0 +1,4 @@
+interface:
+  display_name: "Capture Source"
+  short_description: "Capture a source with provenance"
+  default_prompt: "Use $capture-source to turn this source into a traceable inbox note."

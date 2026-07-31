@@ -1,0 +1,39 @@
+name: Reproduction problem
+description: Report an installation, configuration, or validation problem without sharing secrets.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Never paste API keys, OAuth data, MCP bearer tokens, private paper titles, or note contents."
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Affected layer
+      options:
+        - Zotero
+        - Obsidian
+        - Codex
+        - End-to-end integration
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "Windows 11, macOS 15, Ubuntu 24.04"
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Sanitized version report
+      description: Include component versions and deviations, but no paths or credentials.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and sanitized reproduction steps
+    validations:
+      required: true

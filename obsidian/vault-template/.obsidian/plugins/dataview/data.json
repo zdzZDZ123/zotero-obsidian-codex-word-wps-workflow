@@ -1,0 +1,13 @@
+{
+    "inlineQueryPrefix":  "=",
+    "inlineJsQueryPrefix":  "$=",
+    "inlineQueriesInCodeblocks":  true,
+    "enableInlineDataview":  true,
+    "enableDataviewJs":  false,
+    "enableInlineDataviewJs":  false,
+    "prettyRenderInlineFields":  true,
+    "prettyRenderInlineFieldsInLivePreview":  true,
+    "dataviewJsKeyword":  "dataviewjs",
+    "allowHtml":  true,
+    "showResultCount":  true
+}

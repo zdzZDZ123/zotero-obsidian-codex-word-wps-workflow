@@ -1,0 +1,8 @@
+{
+    "alwaysUpdateLinks":  true,
+    "newFileLocation":  "folder",
+    "newFileFolderPath":  "00-Inbox",
+    "attachmentFolderPath":  "98-Assets",
+    "showUnsupportedFiles":  true,
+    "restrictedMode":  false
+}

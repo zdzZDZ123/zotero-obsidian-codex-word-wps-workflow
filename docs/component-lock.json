@@ -1,0 +1,35 @@
+{
+  "snapshotDate": "2026-07-31",
+  "policy": "Prefer pinned versions; if unavailable, install the latest compatible official release and report the deviation plus runtime validation.",
+  "applications": {
+    "obsidian": "1.12.7",
+    "zotero": "9.0.6",
+    "zoteroConnectorChrome": "5.0.211"
+  },
+  "obsidianCommunityPlugins": {
+    "calendar": "1.5.10",
+    "dataview": "0.5.68",
+    "obsidian-excalidraw-plugin": "2.25.3",
+    "obsidian-git": "2.38.6",
+    "obsidian-icon-folder": "2.14.7",
+    "obsidian-kanban": "2.0.51",
+    "obsidian-style-settings": "1.0.9",
+    "obsidian-tasks-plugin": "8.2.2",
+    "realclaudian": "2.0.34",
+    "table-editor-obsidian": "0.23.2",
+    "templater-obsidian": "2.20.6"
+  },
+  "zoteroPlugins": {
+    "better-bibtex": "9.0.47",
+    "notero": "1.2.3",
+    "translate-for-zotero": "2.4.5",
+    "llm-for-zotero": "3.8.28"
+  },
+  "codex": {
+    "academicResearchSkillsSource": "https://github.com/Imbad0202/academic-research-skills-codex",
+    "academicResearchSkillsTag": "v0.1.18",
+    "academicResearchSkill": "academic-research-suite",
+    "preferredModel": "gpt-5.6-sol",
+    "preferredReasoningEffort": "high"
+  }
+}
