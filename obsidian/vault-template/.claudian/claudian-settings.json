@@ -1,0 +1,138 @@
+{
+    "userName":  "",
+    "permissionMode":  "normal",
+    "model":  "gpt-5.6-sol",
+    "thinkingBudget":  "off",
+    "effortLevel":  "high",
+    "serviceTier":  "default",
+    "enableAutoTitleGeneration":  true,
+    "titleGenerationModel":  "",
+    "excludedTags":  [
+
+                     ],
+    "mediaFolder":  "",
+    "systemPrompt":  "",
+    "persistentExternalContextPaths":  "",
+    "sharedEnvironmentVariables":  "",
+    "envSnippets":  "",
+    "customContextLimits":  {
+
+                            },
+    "customModelAliases":  {
+
+                           },
+    "keyboardNavigation":  {
+                               "scrollUpKey":  "w",
+                               "scrollDownKey":  "s",
+                               "focusInputKey":  "i"
+                           },
+    "requireCommandOrControlEnterToSend":  false,
+    "locale":  "zh-CN",
+    "providerConfigs":  {
+                            "codex":  {
+                                          "enabled":  true,
+                                          "safeMode":  "workspace-write",
+                                          "cliPath":  "",
+                                          "cliPathsByHost":  {
+
+                                                             },
+                                          "customModels":  "",
+                                          "modelAliases":  {
+
+                                                           },
+                                          "visibleModels":  null,
+                                          "reasoningSummary":  "detailed",
+                                          "environmentVariables":  "",
+                                          "environmentHash":  "",
+                                          "installationMethodsByHost":  {
+
+                                                                        },
+                                          "wslDistroOverridesByHost":  {
+
+                                                                       }
+                                      },
+                            "claude":  {
+                                           "safeMode":  "acceptEdits",
+                                           "cliPath":  "",
+                                           "cliPathsByHost":  {
+
+                                                              },
+                                           "loadUserSettings":  true,
+                                           "enableChrome":  false,
+                                           "enableBangBash":  false,
+                                           "customModels":  "",
+                                           "lastModel":  "haiku",
+                                           "environmentVariables":  "",
+                                           "environmentHash":  ""
+                                       },
+                            "opencode":  {
+                                             "cliPath":  "",
+                                             "cliPathsByHost":  {
+
+                                                                },
+                                             "enabled":  false,
+                                             "environmentHash":  "",
+                                             "environmentVariables":  "",
+                                             "modelAliases":  {
+
+                                                              },
+                                             "preferredThinkingByModel":  {
+
+                                                                          },
+                                             "selectedMode":  "",
+                                             "thinkingOptionsByModel":  {
+
+                                                                        },
+                                             "visibleModels":  [
+
+                                                               ]
+                                         },
+                            "pi":  {
+                                       "cliPath":  "",
+                                       "cliPathsByHost":  {
+
+                                                          },
+                                       "discoveredModels":  [
+
+                                                            ],
+                                       "enabled":  false,
+                                       "environmentHash":  "",
+                                       "environmentVariables":  "",
+                                       "modelAliases":  {
+
+                                                        },
+                                       "preferredThinkingByModel":  {
+
+                                                                    },
+                                       "toolMode":  "all",
+                                       "visibleModels":  [
+
+                                                         ]
+                                   }
+                        },
+    "settingsProvider":  "codex",
+    "savedProviderModel":  {
+                               "codex":  "gpt-5.6-sol"
+                           },
+    "savedProviderEffort":  {
+                                "codex":  "high"
+                            },
+    "savedProviderServiceTier":  {
+                                     "codex":  "default"
+                                 },
+    "savedProviderThinkingBudget":  {
+
+                                    },
+    "savedProviderPermissionMode":  {
+                                        "codex":  "normal"
+                                    },
+    "lastCustomModel":  "",
+    "maxTabs":  3,
+    "enableAutoScroll":  true,
+    "deferMathRenderingDuringStreaming":  true,
+    "expandFileEditsByDefault":  false,
+    "chatViewPlacement":  "right-sidebar",
+    "hiddenProviderCommands":  {
+
+                               }
+}

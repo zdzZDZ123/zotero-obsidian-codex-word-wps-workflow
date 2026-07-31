@@ -1,0 +1,39 @@
+/* @settings
+
+name: KnowledgeBase 可调样式
+id: knowledge-base-tweaks
+settings:
+  -
+    id: kb-accent-color
+    title: 强调色
+    description: 按钮、链接和交互元素的主色。
+    type: variable-color
+    format: hex
+    default: '#7c5cff'
+  -
+    id: kb-readable-line-width
+    title: 正文最大宽度
+    description: 控制长文的阅读行宽。
+    type: variable-number-slider
+    default: 780
+    min: 560
+    max: 1100
+    step: 20
+    format: px
+  -
+    id: kb-text-size
+    title: 正文字号
+    type: variable-number-slider
+    default: 16
+    min: 14
+    max: 22
+    step: 1
+    format: px
+
+*/
+
+body {
+  --interactive-accent: var(--kb-accent-color, #7c5cff);
+  --file-line-width: var(--kb-readable-line-width, 780px);
+  --font-text-size: var(--kb-text-size, 16px);
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Weekly Review"
+  short_description: "Review work and evolve the knowledge system"
+  default_prompt: "Use $weekly-review to review this week and improve the knowledge base."

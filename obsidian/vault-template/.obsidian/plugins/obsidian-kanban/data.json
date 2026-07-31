@@ -1,0 +1,17 @@
+{
+    "show-checkboxes":  true,
+    "new-line-trigger":  "shift-enter",
+    "new-card-insertion-method":  "append",
+    "lane-width":  300,
+    "date-picker-week-start":  1,
+    "date-format":  "YYYY-MM-DD",
+    "date-display-format":  "YYYY-MM-DD",
+    "show-relative-date":  true,
+    "show-search":  true,
+    "show-board-settings":  true,
+    "move-tags":  true,
+    "move-dates":  true,
+    "move-task-metadata":  true,
+    "new-note-folder":  "10-Projects",
+    "new-note-template":  "99-Templates/Project.md"
+}

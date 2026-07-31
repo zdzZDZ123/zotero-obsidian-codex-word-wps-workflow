@@ -1,0 +1,4 @@
+interface:
+  display_name: "Traceable Research Run"
+  short_description: "Route Zotero evidence into a traceable paper workflow"
+  default_prompt: "Use $run-traceable-research to turn Zotero sources into a traceable research project and archived paper package."
