@@ -164,6 +164,24 @@ complete trace:
 Expected result: every material claim can be traced to a real source, and the
 workflow survives a new Codex conversation without relying on chat history.
 
+### Gray-Box Runtime Evidence
+
+On 2026-07-31, the installed desktop stack was checked directly with
+privacy-safe views. The public Obsidian Vault opened successfully, Claudian
+2.0.34 loaded with the Codex sidebar, Zotero 9.0.6 loaded the required plugins,
+and `llm-for-zotero` 3.8.31 returned `OK` from its live Codex connection test.
+The same screen reported a connected Zotero MCP server with 15 tools.
+
+| Obsidian public deployment | Zotero-Codex live test |
+|---|---|
+| ![Obsidian public Vault runtime](docs/assets/runtime-evidence/obsidian-public-vault-runtime.png) | ![Zotero Codex smoke test passed](docs/assets/runtime-evidence/zotero-codex-smoke-test-passed.png) |
+
+See the complete, privacy-reviewed capture set in
+[`docs/runtime-evidence.md`](docs/runtime-evidence.md), with SHA-256 digests in
+[`docs/runtime-evidence-manifest.json`](docs/runtime-evidence-manifest.json).
+These screenshots prove runtime loading and local connectivity; the six-step
+trace above remains the release-level acceptance test for source provenance.
+
 ## Security
 
 Do not commit Zotero profiles, private group libraries, licensed PDFs, personal

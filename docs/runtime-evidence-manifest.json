@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-07-31",
+  "timezone": "Asia/Shanghai",
+  "capture_type": "live desktop application screenshots",
+  "privacy_policy": "public Vault or settings-only views; no personal titles, licensed PDF content, credentials, or bearer tokens",
+  "files": [
+    {
+      "path": "assets/runtime-evidence/obsidian-claudian-codex-runtime.png",
+      "sha256": "30d05a626e7f0023a929117b6f35ba86cb580d22658c5d92c19c7a7c03b058df"
+    },
+    {
+      "path": "assets/runtime-evidence/obsidian-claudian-plugin-enabled.png",
+      "sha256": "e28e71cb2179b170bb84f7bb7ff9548145c49dddc9f0dae90c757e27e863ec08"
+    },
+    {
+      "path": "assets/runtime-evidence/obsidian-community-plugins-runtime.png",
+      "sha256": "1422c6d2a8c426b1be660b8d3ef7b1fe0b5e7b5000b92359253a7ae962480dfb"
+    },
+    {
+      "path": "assets/runtime-evidence/obsidian-public-vault-runtime.png",
+      "sha256": "4d4ba0fa41cf8496feb2e28daad0b9df13915f9e4d5b3be7a97f7c25f64ad531"
+    },
+    {
+      "path": "assets/runtime-evidence/zotero-codex-app-server-runtime.png",
+      "sha256": "9cd678757a4688f98e1bec9157af09bf47c25d8d78a8159390810c319a4cb3b5"
+    },
+    {
+      "path": "assets/runtime-evidence/zotero-codex-smoke-test-passed.png",
+      "sha256": "0f55038f68ad82ccae52f7e17d97da3e28867386d804b5d337fa35d61d179009"
+    },
+    {
+      "path": "assets/runtime-evidence/zotero-enabled-plugins-runtime.png",
+      "sha256": "7c2269db53d524a240d18e3f7c15749d405c1ef73cc479d538a9b9abc96995b8"
+    },
+    {
+      "path": "assets/runtime-evidence/zotero-llm-plugin-version.png",
+      "sha256": "ceb7562dd023db903bb64e6f2a5e618e31f2019fe65bcc7a78fb6a6c3dede422"
+    },
+    {
+      "path": "assets/runtime-evidence/zotero-version.png",
+      "sha256": "1e1be807b183d94b637de8dea7d54d349629b78dedae8d5c8ebcca0f659f3d53"
+    }
+  ]
+}
