@@ -33,3 +33,12 @@ obsidian/vault-template/.obsidian/plugins/*/manifest.json
 # Temporary audit output
 audit-output/
 *.log
+
+# Local publication inputs, runtimes, and generated submissions
+**/__pycache__/
+*.pyc
+.runtime/
+**/.publication-formatting/
+**/templates-local/
+**/submission-output/
+*.dotx

@@ -10,6 +10,8 @@
 
 Install `academic-research-suite` from the pinned source/tag in `docs/component-lock.json` into the user's Codex skills directory. The Vault already contains five project-local skills under `.agents/skills`; `run-traceable-research` is the handoff layer between general academic research capabilities, Zotero evidence, and Obsidian storage.
 
+Install the repository's lightweight `format-submission-manuscript` skill after the academic suite. It owns only the Phase 7 publication adapter: semantic Markdown, Better BibTeX/CSL, deterministic DOCX, Word/WPS compatibility copies, and page-level QA. It must not duplicate or rewrite the upstream research phases.
+
 Do not silently replace the requested research suite with an unrelated repository. If the pinned tag cannot be installed, report the access or compatibility problem and use the smallest verified fallback.
 
 ## Runtime defaults

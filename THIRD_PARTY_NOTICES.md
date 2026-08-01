@@ -12,5 +12,11 @@ No third-party application or plugin binary is redistributed by this repository.
 - [Translate for Zotero](https://github.com/windingwind/zotero-pdf-translate)
 - [LLM for Zotero](https://github.com/yilewang/llm-for-zotero)
 - [Claudian](https://github.com/YishenTu/claudian)
+- [Pandoc](https://pandoc.org/)
+- [LibreOffice](https://www.libreoffice.org/)
+- [WPS Office](https://www.wps.com/)
+- [Microsoft Word](https://www.microsoft.com/microsoft-365/word)
+
+Journal CSL files and publisher DOCX/DOTX templates remain subject to their source terms and are intentionally not redistributed. Commercial fonts and office application installers are also excluded.
 
 Names and links are provided for identification and installation. Each project remains subject to its own license, terms, privacy policy, and release integrity. Check those terms before installation or redistribution.

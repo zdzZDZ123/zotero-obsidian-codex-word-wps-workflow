@@ -4,7 +4,7 @@ Copy the prompt below into Codex on the target computer.
 
 ---
 
-You are deploying the Zotero side of an open Zotero–Obsidian–Codex research workflow. Work on the actual desktop environment and validate it; do not merely write instructions.
+You are deploying the Zotero evidence and citation layer of the open Zotero–Obsidian–Codex–Word/WPS research and publication workflow. Work on the actual desktop environment and validate it; do not merely write instructions.
 
 Read `docs/component-lock.json`, `zotero/README.md`, `docs/security-model.md`, and `THIRD_PARTY_NOTICES.md` first.
 

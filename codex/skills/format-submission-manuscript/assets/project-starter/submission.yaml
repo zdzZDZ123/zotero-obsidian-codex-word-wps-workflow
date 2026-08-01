@@ -1,0 +1,13 @@
+schema_version: 1
+manuscript: manuscript.md
+title_page: title-page.md
+bibliography: references.json
+journal_profile: profiles/generic-double-blind.yaml
+template_mode: profile_overlay
+editor: auto
+variants: [anonymized]
+outputs: [docx, pdf]
+output_root: submission-output
+open_after: false
+desktop_copy: false
+blind_terms: []

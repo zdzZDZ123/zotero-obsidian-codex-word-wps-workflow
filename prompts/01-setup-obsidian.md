@@ -4,7 +4,7 @@ Copy the prompt below into Codex on the target computer.
 
 ---
 
-You are deploying the Obsidian side of an open Zotero–Obsidian–Codex research workflow. Work autonomously and finish the runtime validation; do not stop at a written plan.
+You are deploying the Obsidian knowledge and semantic-manuscript layer of the open Zotero–Obsidian–Codex–Word/WPS research and publication workflow. Work autonomously and finish the runtime validation; do not stop at a written plan.
 
 Repository: this cloned repository. Read `README.zh-CN.md`, `docs/component-lock.json`, `docs/security-model.md`, and `obsidian/vault-template/AGENTS.md` first.
 

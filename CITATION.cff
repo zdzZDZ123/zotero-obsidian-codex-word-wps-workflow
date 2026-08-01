@@ -1,10 +1,10 @@
 cff-version: 1.2.0
-message: "If this workflow helps your research, please cite this repository."
-title: "Zotero × Obsidian × Codex Research Workflow"
+message: "If this research and publication workflow helps your work, please cite this repository."
+title: "ZOCW: Zotero × Obsidian × Codex × Word/WPS Research and Publication Workflow"
 type: software
 authors:
   - name: "zdzZDZ123"
-repository-code: "https://github.com/zdzZDZ123/zotero-obsidian-codex-research-workflow"
+repository-code: "https://github.com/zdzZDZ123/zotero-obsidian-codex-word-wps-workflow"
 license: MIT
 version: 0.1.0
 date-released: 2026-07-31

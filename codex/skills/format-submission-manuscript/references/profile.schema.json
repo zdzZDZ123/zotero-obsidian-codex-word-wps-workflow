@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zdzZDZ123/zotero-obsidian-codex-word-wps-workflow/schemas/profile.schema.json",
+  "title": "Journal formatting profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "name", "page", "body", "styles"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,62}$"},
+    "name": {"type": "string"},
+    "status": {"type": "string"},
+    "source": {"type": "object"},
+    "page": {"type": "object"},
+    "body": {"type": "object"},
+    "styles": {"type": "object"},
+    "captions": {"type": "object"},
+    "tables": {"type": "object"},
+    "figures": {"type": "object"},
+    "header": {"type": "object"},
+    "footer": {"type": "object"},
+    "references": {"type": "object"},
+    "variants": {"type": "array"}
+  }
+}

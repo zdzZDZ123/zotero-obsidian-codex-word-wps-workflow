@@ -1,42 +1,104 @@
-# ZOC Research Workflow
+# ZOCW Research & Publication Workflow
 
-[![Version](https://img.shields.io/badge/version-v0.1.0-blue)](https://github.com/zdzZDZ123/zotero-obsidian-codex-research-workflow/releases/tag/v0.1.0)
+[![Version](https://img.shields.io/badge/version-v0.1.0-blue)](https://github.com/zdzZDZ123/zotero-obsidian-codex-word-wps-workflow/releases/tag/v0.1.0)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Validate](https://github.com/zdzZDZ123/zotero-obsidian-codex-research-workflow/actions/workflows/validate.yml/badge.svg)](https://github.com/zdzZDZ123/zotero-obsidian-codex-research-workflow/actions/workflows/validate.yml)
+[![Validate](https://github.com/zdzZDZ123/zotero-obsidian-codex-word-wps-workflow/actions/workflows/validate.yml/badge.svg)](https://github.com/zdzZDZ123/zotero-obsidian-codex-word-wps-workflow/actions/workflows/validate.yml)
+[![WPS](https://img.shields.io/badge/WPS%20Writer-12.1%20verified-c51a4a)](docs/publication-formatting.md)
+[![DOCX/PDF](https://img.shields.io/badge/DOCX%20%2B%20PDF-page--QA%20gated-4f81bd)](docs/publication-formatting.md)
 
 [简体中文](README.zh-CN.md)
 
-ZOC Research Workflow is a Codex-native integration layer for traceable
-Zotero–Obsidian academic research. It connects a literature source of truth,
-a durable personal knowledge base, and an agentic research runtime without
-merging their responsibilities or copying private state between machines.
+**Zotero → Obsidian → Codex → Word/WPS, from evidence to a QA-gated submission package.**
+
+ZOCW Research & Publication Workflow is an open, Codex-native system for
+traceable academic research and deterministic manuscript delivery. Zotero owns
+the evidence and citation identity, Obsidian preserves research knowledge,
+Codex performs evidence-aware research and writing, and genuine Microsoft Word
+or WPS Writer refreshes fields, exports PDF, and validates editor compatibility.
 
 This repository distributes the workflow as a reproducible configuration and
 prompt suite. It includes a sanitized Obsidian Vault, local research skills,
-deployment prompts, audit helpers, and integrity gates. Zotero libraries,
-licensed PDFs, credentials, bearer tokens, and third-party plugin binaries are
-intentionally excluded.
+deployment prompts, a journal-formatting skill, audit helpers, and hard release
+gates. Scientific content stays separate from layout, so changing journals
+means rebuilding from semantic Markdown instead of manually restyling a DOCX.
+Private Zotero libraries, licensed PDFs, credentials, commercial applications,
+and third-party plugin binaries are intentionally excluded.
 
-```text
-Zotero                         Obsidian                         Codex
-  literature metadata           project control                 retrieval
-  PDFs and annotations          source and evergreen notes      synthesis
-  bibliographic identity        durable research memory         drafting/review
-             \                    |                    /
-              └──── traceable evidence handoff ──────┘
+```mermaid
+flowchart LR
+  Z["Zotero<br/>evidence + citation identity"] --> O["Obsidian<br/>semantic manuscript + knowledge base"]
+  O --> C["Codex<br/>research + writing + formatting orchestration"]
+  C --> D["Immutable core DOCX"]
+  D --> E["Microsoft Word or WPS Writer<br/>fields + reviewed copy + PDF"]
+  D --> L["LibreOffice<br/>independent PDF render"]
+  E --> Q["Page-by-page QA<br/>release manifest + hashes"]
+  L --> Q
 ```
 
-## Relationship Between The Three Systems
+## What The Workflow Adds
 
-This repository does not replace Zotero, Obsidian, Codex, or the upstream
-academic-research skill suite.
+| Stage | System | Result |
+|---|---|---|
+| Evidence | Zotero + Better BibTeX | Authoritative metadata, PDFs, annotations, citation keys |
+| Knowledge | Obsidian | Source notes, evergreen knowledge, project state, semantic manuscript |
+| Research | Codex + academic research skills | Retrieval, synthesis, drafting, review, evidence gates |
+| Formatting | Codex + Pandoc/CSL | Deterministic styles, citations, tables, figures, anonymous/title-page packages |
+| Compatibility | Word/WPS + LibreOffice | Field refresh, reviewed DOCX, PDF export, independent page rendering |
+| Release | Codex visual QA | Privacy report, structural comparison, page images, SHA-256 manifest |
+
+## WPS And Word Are First-Class Publication Backends
+
+The publication layer does not merely open a generated file. It keeps an
+immutable core DOCX, asks the selected editor to refresh `PAGE`, `SEQ`, `REF`,
+and `TOC` fields, saves a separate reviewed copy, exports PDF, reopens the copy,
+and compares its structure. `editor: auto` prefers genuine Microsoft Word only
+when `Word.Application` resolves to `WINWORD.EXE`; otherwise it uses the
+explicit `KWPS.Application` WPS interface. A WPS-owned `Word.Application`
+registration is never misreported as Microsoft Word.
+
+Both the editor PDF and the independent LibreOffice PDF are rasterized to page
+images. A run cannot become `qa_passed` until every page has been checked for
+clipping, overlap, table overflow, figure scale, captions, fonts, page numbers,
+and pagination. See [Publication formatting](docs/publication-formatting.md).
+
+### Current Publication-Backend Evidence
+
+The 2026-08-01 validation snapshot detected WPS Office `12.1.0.28032`,
+LibreOffice `26.2.4.2`, and Pandoc `3.10`. Genuine Microsoft Word was not
+installed and therefore remains `not_checked`, rather than being inferred from
+WPS's COM registration. A privacy-safe 27-page compatibility manuscript was
+exported, reopened, structurally compared, rasterized, and inspected page by
+page through both the WPS and LibreOffice paths.
+
+Before this update was published, two additional end-to-end acceptance runs
+were released as `qa_passed`: a user-defined YAML layout and an authorized
+synthetic uploaded-DOCX format reference. Together they exercised 18 rendered
+pages across WPS and LibreOffice, including separate title pages, citations, a
+figure, a table, anonymous metadata, consecutive WPS automation, PDF export,
+reopen checks, and page-by-page visual review. The uploaded-reference run also
+rechecked page geometry, theme fonts, and core styles after WPS saved the
+reviewed copy. See [WPS acceptance evidence](docs/wps-acceptance.md).
+
+Users can format in three ways: select a versioned journal profile, edit their
+own YAML profile, or upload an authorized DOCX/DOTX format reference. Uploaded
+references are distilled read-only and can run in `template_authoritative`
+mode, where page geometry and core style signatures must match both before and
+after WPS produces the reviewed copy. Reference prose and identifying
+header/footer text are not copied into the new manuscript.
+
+## Responsibility Boundaries
+
+This repository does not replace Zotero, Obsidian, Codex, Word/WPS, or the
+upstream academic-research skill suite.
 
 - Use **Zotero** for authoritative bibliographic metadata, locally available
   PDFs, annotations, and source-linked child notes.
 - Use **Obsidian** for project state, reusable knowledge, research logs,
   synthesis matrices, and durable outputs.
 - Use **Codex** for research routing, evidence retrieval, synthesis, drafting,
-  review, and controlled writes across the two stores.
+  review, deterministic formatting, QA, and controlled writes across stores.
+- Use **Microsoft Word or WPS Writer** only as a compatibility and final-review
+  backend. The semantic manuscript remains the source of truth.
 - Use
   [`Imbad0202/academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex)
   as the Codex-native academic research engine. The Vault-local
@@ -62,12 +124,19 @@ obsidian/vault-template/
 zotero/README.md
 codex/README.md
 prompts/01-setup-obsidian.md ... 04-run-first-research.md
+prompts/05-setup-publication-formatting.md
+codex/skills/format-submission-manuscript/
 docs/component-lock.json
 docs/architecture.md
+docs/publication-formatting.md
 docs/security-model.md
 scripts/validate-repo.ps1
 scripts/Audit-ObsidianEnvironment.ps1
 scripts/Audit-ObsidianEnvironment-macOS.command
+scripts/Install-PublicationFormatting.ps1
+scripts/Install-PublicationFormatting-macOS.command
+scripts/Format-ResearchManuscript.ps1
+scripts/Format-ResearchManuscript-macOS.command
 ```
 
 ## Versioning
@@ -85,8 +154,8 @@ number alone is never treated as runtime evidence.
 Clone the repository on the target computer:
 
 ```bash
-git clone https://github.com/zdzZDZ123/zotero-obsidian-codex-research-workflow.git
-cd zotero-obsidian-codex-research-workflow
+git clone https://github.com/zdzZDZ123/zotero-obsidian-codex-word-wps-workflow.git
+cd zotero-obsidian-codex-word-wps-workflow
 ```
 
 Then give the deployment prompts to Codex in order:
@@ -95,6 +164,7 @@ Then give the deployment prompts to Codex in order:
 2. [`prompts/02-setup-zotero.md`](prompts/02-setup-zotero.md)
 3. [`prompts/03-connect-codex.md`](prompts/03-connect-codex.md)
 4. [`prompts/04-run-first-research.md`](prompts/04-run-first-research.md)
+5. [`prompts/05-setup-publication-formatting.md`](prompts/05-setup-publication-formatting.md)
 
 The prompts instruct Codex to inspect the actual operating system, find each
 official application/plugin source, preserve existing user data, configure the
@@ -109,6 +179,21 @@ Follow its current installation instructions, or use the baseline recorded in
 
 After installation, open a new Codex conversation and verify that
 `academic-research-suite` or `ARS-Codex` appears in `/skills`.
+
+## Install The Publication Layer
+
+Run the platform installer in `scripts/`, then restart Codex and confirm that
+`format-submission-manuscript` appears in `/skills`.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Install-PublicationFormatting.ps1
+.\scripts\Format-ResearchManuscript.ps1 doctor --self-test
+```
+
+The layer consumes semantic Markdown and Better BibTeX exports, creates an
+immutable core DOCX plus a separate Word/WPS-reviewed copy, and blocks release
+until every rendered page is inspected. See
+[`docs/publication-formatting.md`](docs/publication-formatting.md).
 
 ## Usage
 

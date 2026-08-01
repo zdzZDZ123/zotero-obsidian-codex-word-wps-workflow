@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zdzZDZ123/zotero-obsidian-codex-word-wps-workflow/schemas/submission.schema.json",
+  "title": "Submission formatting contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "manuscript", "journal_profile"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "manuscript": {"type": "string", "minLength": 1},
+    "bibliography": {"type": "string"},
+    "csl": {"type": "string"},
+    "journal_profile": {"type": "string", "minLength": 1},
+    "title_page": {"type": "string"},
+    "supplementary": {"type": "array", "items": {"type": "string"}},
+    "template": {"type": "string"},
+    "template_contract": {"type": "string"},
+    "template_mode": {"enum": ["profile_overlay", "template_authoritative"]},
+    "editor": {"enum": ["auto", "word", "wps", "none"]},
+    "variants": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["anonymized", "full"]}},
+    "outputs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["docx", "pdf"]}},
+    "output_root": {"type": "string"},
+    "open_after": {"type": "boolean"},
+    "desktop_copy": {"type": "boolean"},
+    "blind_terms": {"type": "array", "items": {"type": "string"}}
+  },
+  "dependentRequired": {
+    "template": ["template_contract"],
+    "template_contract": ["template"]
+  }
+}
