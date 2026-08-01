@@ -62,6 +62,8 @@ obsidian/vault-template/
 zotero/README.md
 codex/README.md
 prompts/01-setup-obsidian.md ... 04-run-first-research.md
+prompts/05-setup-publication-formatting.md
+codex/skills/format-submission-manuscript/
 docs/component-lock.json
 docs/architecture.md
 docs/security-model.md
@@ -95,6 +97,7 @@ Then give the deployment prompts to Codex in order:
 2. [`prompts/02-setup-zotero.md`](prompts/02-setup-zotero.md)
 3. [`prompts/03-connect-codex.md`](prompts/03-connect-codex.md)
 4. [`prompts/04-run-first-research.md`](prompts/04-run-first-research.md)
+5. [`prompts/05-setup-publication-formatting.md`](prompts/05-setup-publication-formatting.md)
 
 The prompts instruct Codex to inspect the actual operating system, find each
 official application/plugin source, preserve existing user data, configure the
@@ -109,6 +112,10 @@ Follow its current installation instructions, or use the baseline recorded in
 
 After installation, open a new Codex conversation and verify that
 `academic-research-suite` or `ARS-Codex` appears in `/skills`.
+
+## Install The Publication Layer
+
+Run the platform installer in `scripts/`, then restart Codex and confirm that `format-submission-manuscript` appears in `/skills`. The layer consumes semantic Markdown and Better BibTeX exports, creates an immutable core DOCX plus a separate Word/WPS-reviewed copy, and blocks release until every rendered page is inspected. See [`docs/publication-formatting.md`](docs/publication-formatting.md).
 
 ## Usage
 

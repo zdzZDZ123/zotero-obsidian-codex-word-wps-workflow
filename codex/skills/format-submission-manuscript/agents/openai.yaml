@@ -1,0 +1,4 @@
+interface:
+  display_name: "投稿格式化"
+  short_description: "用期刊模板和 CSL 生成、验证并打开投稿级 DOCX"
+  default_prompt: "Use $format-submission-manuscript to convert my semantic manuscript into a verified journal submission package."

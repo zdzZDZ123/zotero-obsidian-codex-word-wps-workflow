@@ -1,0 +1,35 @@
+schema_version: 1
+id: generic-double-blind
+name: Generic double-blind journal manuscript
+status: repository_verified_generic
+source:
+  type: repository_contract
+  url: null
+  retrieved_at: 2026-08-01
+  note: Generic fallback only; not an official journal profile.
+page:
+  size: a4
+  orientation: portrait
+  margins_cm: {top: 2.54, bottom: 2.54, left: 2.54, right: 2.54}
+  header_distance_cm: 1.25
+  footer_distance_cm: 1.25
+  line_numbers: true
+body:
+  font: Arial
+  size_pt: 11
+  line_spacing: double
+styles:
+  normal: {font: Arial, size_pt: 11, line_spacing: double, alignment: left}
+  title: {font: Arial, size_pt: 16, bold: true, alignment: center, space_after_pt: 12}
+  heading_1: {font: Arial, size_pt: 13, bold: true, keep_with_next: true, space_before_pt: 12, space_after_pt: 6}
+  heading_2: {font: Arial, size_pt: 11, bold: true, keep_with_next: true, space_before_pt: 10, space_after_pt: 4}
+  heading_3: {font: Arial, size_pt: 11, italic: true, keep_with_next: true, space_before_pt: 8, space_after_pt: 4}
+  caption: {font: Arial, size_pt: 10, line_spacing: single, keep_with_next: true, space_after_pt: 6}
+  bibliography: {font: Arial, size_pt: 10, line_spacing: single, hanging_indent_cm: 0.75, space_after_pt: 3}
+captions: {numbering: sequential}
+tables: {border_style: three_line, repeat_header: true}
+figures: {max_width_cm: 15.92}
+header: {text: Anonymous manuscript, alignment: right, size_pt: 8}
+footer: {page_number: true, alignment: center}
+references: {source: zotero_csl_only}
+variants: [anonymized, full]

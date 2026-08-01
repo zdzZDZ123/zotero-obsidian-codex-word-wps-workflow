@@ -6,6 +6,12 @@
 
 [English](README.md)
 
+## 投稿格式化层
+
+本仓库现在包含独立的 `format-submission-manuscript` Codex 技能：从 Obsidian 语义稿件和 Better BibTeX 自动导出出发，通过 Pandoc/CSL 生成不可变核心 DOCX，再由真正的 Microsoft Word 或 WPS 产生独立审阅副本和 PDF，并用 LibreOffice 与编辑器 PDF 逐页渲染质检。系统只有在每一页完成目视检查后才会把运行状态改为 `qa_passed`。
+
+安装及使用说明见 [`docs/publication-formatting.md`](docs/publication-formatting.md)，自动部署提示词见 [`prompts/05-setup-publication-formatting.md`](prompts/05-setup-publication-formatting.md)。仓库不包含商业字体、Word/WPS 安装包、受版权保护的期刊模板、私人稿件或 Zotero 数据。
+
 ZOC Research Workflow 是一套面向 Codex 的 Zotero–Obsidian 可追溯科研集成层。
 它把文献事实源、长期个人知识库和智能科研执行环境连接起来，同时保持三者的职责边界，
 也不会把某台电脑上的私人状态直接复制到另一台电脑。

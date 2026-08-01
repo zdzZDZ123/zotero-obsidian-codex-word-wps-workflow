@@ -1,10 +1,14 @@
 {
-  "snapshotDate": "2026-07-31",
+  "snapshotDate": "2026-08-01",
   "policy": "Prefer pinned versions; if unavailable, install the latest compatible official release and report the deviation plus runtime validation.",
   "applications": {
     "obsidian": "1.12.7",
     "zotero": "9.0.6",
-    "zoteroConnectorChrome": "5.0.211"
+    "zoteroConnectorChrome": "5.0.211",
+    "wpsOffice": "12.1.0.27458",
+    "libreOffice": "26.2.4.2",
+    "pandoc": "3.10",
+    "microsoftWord": "not-installed"
   },
   "obsidianCommunityPlugins": {
     "calendar": "1.5.10",
@@ -30,6 +34,8 @@
     "academicResearchSkillsTag": "v0.1.18",
     "academicResearchSkill": "academic-research-suite",
     "preferredModel": "gpt-5.6-sol",
-    "preferredReasoningEffort": "high"
+    "preferredReasoningEffort": "high",
+    "publicationFormattingSkill": "format-submission-manuscript",
+    "publicationFormattingSkillVersion": "1.0.0"
   }
 }

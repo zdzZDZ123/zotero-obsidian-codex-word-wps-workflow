@@ -32,3 +32,19 @@ The primary workflow uses agent prompts and official installers; no replication 
 ## GitHub repository creation works but `git push` is reset
 
 Retry normal Git transport first. If `api.github.com` remains reachable while Git smart HTTP is blocked, an authenticated maintainer can run `scripts/Publish-ViaGitHubApi.ps1 -Repository owner/repository` from a clean, unpublished root commit. The fallback uploads every tracked file through GitHub's official Git Data API, canonicalizes the local root-commit serialization to match GitHub's API representation, and refuses publication unless both the tree and root-commit hashes match.
+
+## `doctor` reports Word is served by WPS
+
+This is expected when WPS registers `Word.Application`. The formatter enables Microsoft Word only when the COM server executable is `WINWORD.EXE`. Use `editor: auto` to select WPS, or install licensed Microsoft Word separately and rerun `doctor`. Never relabel the WPS registration as genuine Word.
+
+## LibreOffice headless conversion times out
+
+Do not retry the same global profile. The formatter stages the DOCX under an ASCII temporary path, creates a unique `UserInstallation` URI, sets a private HOME/TEMP, invokes the explicit LibreOffice executable, captures output, enforces a timeout, and removes only its own temporary directory. Check for a modal first-run process or a damaged LibreOffice installation if this isolated path still fails.
+
+## Pandoc was installed but the current terminal cannot find it
+
+Open a new terminal, or run the repository wrapper. The formatter also detects winget's versioned Pandoc package directory, so a stale process PATH does not invalidate `doctor`.
+
+## A run stays `qa_pending_visual_inspection`
+
+That is intentional. Open every PNG listed by `run-manifest.json`, inspect it at full resolution, then use `finalize --confirm-every-page`. Structural checks and successful rasterization alone cannot release a submission.

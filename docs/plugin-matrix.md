@@ -34,3 +34,15 @@ Download each plugin from its official release page listed in [`THIRD_PARTY_NOTI
 ## Codex
 
 The global research capability comes from `academic-research-suite` in [`Imbad0202/academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex), baseline tag `v0.1.18`. The Vault-local `run-traceable-research` skill adds the narrow Zotero evidence and Obsidian handoff contract.
+
+## Publication formatting
+
+| Component | Baseline | Function |
+|---|---:|---|
+| `format-submission-manuscript` | 1.0.0 | Submission contract, deterministic DOCX, privacy and page QA |
+| Pandoc | 3.10 | Markdown conversion and CSL citeproc |
+| LibreOffice | 26.2.4.2 | Independent headless PDF rendering |
+| WPS Office | 12.1.0.27458 | Verified Windows editor/field/PDF backend |
+| Microsoft Word | not installed | Auto-enabled only when `Word.Application` resolves to `WINWORD.EXE` |
+
+See [`publication-formatting.md`](publication-formatting.md). WPS, Word, LibreOffice, Pandoc, fonts, and journal templates are never redistributed by this repository.
