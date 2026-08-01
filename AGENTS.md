@@ -2,7 +2,7 @@
 
 ## Scope
 
-This repository contains a public, privacy-safe replication contract for a Zotero, Obsidian, and Codex research workflow.
+This repository contains a public, privacy-safe replication contract for a Zotero, Obsidian, Codex, and Word/WPS research and publication workflow.
 
 ## Required behavior
 

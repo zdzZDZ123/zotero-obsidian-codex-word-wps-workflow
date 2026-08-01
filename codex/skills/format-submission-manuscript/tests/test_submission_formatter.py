@@ -18,6 +18,12 @@ SPEC.loader.exec_module(formatter)
 
 
 class FormatterUnitTests(unittest.TestCase):
+    def test_custom_profile_reports_invalid_alignment_clearly(self) -> None:
+        profile = formatter.yaml_load(SKILL_ROOT / "assets" / "profiles" / "generic-double-blind.yaml")
+        profile["styles"]["normal"]["alignment"] = "justified"
+        with self.assertRaisesRegex(formatter.FormatterError, "alignment must be left, center, right, or justify"):
+            formatter.validate_profile(profile)
+
     def test_semantic_manifest_and_evidence_gate(self) -> None:
         text = "# Result\n\nEvidence [@smith2024].\n\n| A | B |\n|---|---|\n| 1 | 2 |\n"
         manifest = formatter.semantic_manifest(text)
@@ -65,6 +71,68 @@ class FormatterUnitTests(unittest.TestCase):
 
 
 class FormatterEndToEndTests(unittest.TestCase):
+    def test_uploaded_template_is_authoritative_and_privacy_sanitized(self) -> None:
+        environment = formatter.detect_environment()
+        if not all(environment[name]["available"] for name in ("pandoc", "libreoffice", "pdftoppm")):
+            self.skipTest("Pandoc, LibreOffice, and pdftoppm are required for the template test")
+        with tempfile.TemporaryDirectory(prefix="pubfmt-template-e2e-") as name:
+            project = Path(name)
+            (project / "profiles").mkdir()
+            (project / "templates-local").mkdir()
+            shutil.copy2(SKILL_ROOT / "assets" / "profiles" / "generic-double-blind.yaml", project / "profiles" / "safe.yaml")
+            reference = project / "templates-local" / "uploaded-reference.docx"
+            document = formatter.Document()
+            section = document.sections[0]
+            section.page_width, section.page_height = formatter.Cm(21), formatter.Cm(29.7)
+            section.top_margin = formatter.Cm(1.7)
+            section.bottom_margin = formatter.Cm(2.1)
+            section.left_margin = formatter.Cm(2.3)
+            section.right_margin = formatter.Cm(1.9)
+            normal = document.styles["Normal"]
+            normal.font.name = "Calibri"
+            normal.font.size = formatter.Pt(10.5)
+            normal.paragraph_format.line_spacing = 1.15
+            heading = document.styles["Heading 1"]
+            heading.font.name = "Calibri"
+            heading.font.size = formatter.Pt(15)
+            heading.font.bold = True
+            heading.font.color.rgb = formatter.RGBColor(0x1F, 0x4E, 0x79)
+            document.sections[0].header.paragraphs[0].text = "PRIVATE SOURCE AUTHOR"
+            document.add_heading("Uploaded format sample", level=1)
+            document.add_paragraph("Reference prose must never be copied.")
+            document.save(reference)
+            before = formatter.sha256_file(reference)
+            contract = formatter.distill_template(reference, project / "templates-local" / "contract", render=False)
+            self.assertEqual(formatter.sha256_file(reference), before)
+            self.assertEqual(contract["unresolved"], [])
+            (project / "manuscript.md").write_text(
+                "---\ntitle: User manuscript\n---\n\n# Methods\n\nOnly user content may appear.\n",
+                encoding="utf-8",
+            )
+            (project / "submission.yaml").write_text(
+                "schema_version: 1\nmanuscript: manuscript.md\n"
+                "journal_profile: profiles/safe.yaml\n"
+                "template: templates-local/uploaded-reference.docx\n"
+                "template_contract: templates-local/contract/template-contract.json\n"
+                "template_mode: template_authoritative\neditor: none\nvariants: [anonymized]\n"
+                "outputs: [docx, pdf]\noutput_root: submission-output\n",
+                encoding="utf-8",
+            )
+            result = formatter.format_submission(project / "submission.yaml", editor_override="none")
+            manifest = json.loads(Path(result["manifest"]).read_text(encoding="utf-8"))
+            fidelity = manifest["variants"]["anonymized"]["template_fidelity"]
+            self.assertTrue(fidelity["passed"])
+            output = Path(result["run_dir"]) / "anonymized" / "manuscript-anonymized.docx"
+            output_doc = formatter.Document(output)
+            output_text = "\n".join(paragraph.text for paragraph in output_doc.paragraphs)
+            header_text = "\n".join(paragraph.text for paragraph in output_doc.sections[0].header.paragraphs)
+            self.assertNotIn("Reference prose", output_text)
+            self.assertNotIn("PRIVATE SOURCE AUTHOR", header_text)
+            self.assertIn("Anonymous manuscript", header_text)
+            self.assertAlmostEqual(output_doc.sections[0].top_margin / 360000, 1.7, places=2)
+            self.assertEqual(output_doc.styles["Normal"].font.name, "Calibri")
+            self.assertEqual(output_doc.styles["Heading 1"].font.size.pt, 15)
+
     def test_citation_to_docx_pdf_and_rendered_pages(self) -> None:
         environment = formatter.detect_environment()
         if not all(environment[name]["available"] for name in ("pandoc", "libreoffice", "pdftoppm")):

@@ -21,8 +21,8 @@ Read [references/workflow-contract.md](references/workflow-contract.md) before f
 ## Workflow
 
 1. Run `doctor --self-test`. Report genuine Microsoft Word as available only when `Word.Application` resolves to `WINWORD.EXE`; never count WPS as Word.
-2. If an official DOCX/DOTX exists, retain it locally and run `distill`. Keep its SHA-256 and source URL. Do not commit copyrighted templates.
-3. Inspect `submission.yaml`. Prefer the official distilled template; otherwise use a versioned profile whose source and validation status are explicit.
+2. If an official or user-authorized reference DOCX/DOTX exists, retain it locally and run `distill`. Keep its SHA-256 and source URL. Do not commit copyrighted templates.
+3. Inspect `submission.yaml`. Use `template_mode: template_authoritative` when the uploaded document must control page geometry and named styles; use `profile_overlay` when a declared YAML profile should override it. Otherwise use a versioned profile whose source and validation status are explicit.
 4. Run `format`. Stop if citation evidence markers remain, a citation key is missing, a declared file is absent, or a template hash changed.
 5. Inspect every LibreOffice-rendered page and every Word/WPS PDF-rendered page at full resolution. Check clipping, overlaps, table overflow, figure scale, caption placement, font substitution, page numbers, and pagination.
 6. Run `finalize --confirm-every-page` only after the inspection passes. This is the only transition from `qa_pending_visual_inspection` to `qa_passed` and the only point at which a requested desktop copy is made.
@@ -45,6 +45,7 @@ On Windows, `auto` prefers genuine Word and otherwise uses `KWPS.Application`. O
 
 - Use Pandoc citeproc plus the declared bibliography and CSL. Never hand-rewrite references or infer citation style.
 - Preserve a separate immutable core DOCX. Let Word/WPS save only a reviewed copy.
+- Never copy scientific prose or identifying header/footer text from an uploaded format reference. Use its privacy-sanitized working copy and require template-fidelity checks.
 - Generate a new run directory for every journal switch. Never restyle a previously reviewed artifact in place.
 - Scrub author metadata, custom properties, revision identifiers, comments, and tracked changes from anonymous output.
 - Do not claim visual completion from structure checks alone. A failed or timed-out LibreOffice render is a failed run.

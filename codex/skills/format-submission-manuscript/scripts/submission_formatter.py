@@ -162,12 +162,27 @@ def validate_profile(profile: dict[str, Any]) -> None:
         raise FormatterError("All margins must be positive numbers")
     if not isinstance(profile["styles"], dict) or "normal" not in profile["styles"]:
         raise FormatterError("profile.styles.normal is required")
+    supported_alignments = {"left", "center", "right", "justify"}
+    supported_spacing = {"single", "onehalf", "double"}
+    body = profile["body"]
+    if not isinstance(body, dict):
+        raise FormatterError("profile.body must be a mapping")
+    style_configs = [("body", body), *[(f"styles.{name}", value) for name, value in profile["styles"].items()]]
+    for label, style_config in style_configs:
+        if not isinstance(style_config, dict):
+            raise FormatterError(f"profile.{label} must be a mapping")
+        alignment = style_config.get("alignment")
+        if alignment is not None and alignment not in supported_alignments:
+            raise FormatterError(f"profile.{label}.alignment must be left, center, right, or justify")
+        spacing = style_config.get("line_spacing")
+        if spacing is not None and not isinstance(spacing, (int, float)) and spacing not in supported_spacing:
+            raise FormatterError(f"profile.{label}.line_spacing must be single, onehalf, double, or a number")
 
 
 def validate_submission(config: dict[str, Any]) -> None:
     allowed = {
         "schema_version", "manuscript", "bibliography", "csl", "journal_profile", "template",
-        "template_contract", "editor", "variants", "outputs", "output_root", "open_after",
+        "template_contract", "template_mode", "editor", "variants", "outputs", "output_root", "open_after",
         "desktop_copy", "blind_terms", "title_page", "supplementary",
     }
     strict_keys(config, allowed, "submission")
@@ -186,6 +201,11 @@ def validate_submission(config: dict[str, Any]) -> None:
         raise FormatterError("outputs must contain docx and/or pdf")
     if bool(config.get("template")) != bool(config.get("template_contract")):
         raise FormatterError("template and template_contract must be declared together")
+    template_mode = config.get("template_mode", "profile_overlay")
+    if template_mode not in {"profile_overlay", "template_authoritative"}:
+        raise FormatterError("template_mode must be profile_overlay or template_authoritative")
+    if template_mode == "template_authoritative" and not config.get("template"):
+        raise FormatterError("template_authoritative mode requires template and template_contract")
     if config.get("supplementary") is not None and not isinstance(config["supplementary"], list):
         raise FormatterError("supplementary must be a list of project-relative files")
 
@@ -640,6 +660,166 @@ def apply_profile(docx_path: Path, profile: dict[str, Any]) -> None:
     scrub_package_metadata(docx_path)
 
 
+def prepare_reference_doc(template: Path, destination: Path) -> Path:
+    """Create a privacy-safe local reference copy without mutating the retained source."""
+    shutil.copy2(template, destination)
+    document = Document(destination)
+    for section in document.sections:
+        for story in (section.header, section.first_page_header, section.even_page_header, section.footer, section.first_page_footer, section.even_page_footer):
+            for paragraph in story.paragraphs:
+                paragraph.clear()
+    document.core_properties.author = ""
+    document.core_properties.last_modified_by = ""
+    document.core_properties.comments = ""
+    document.save(destination)
+    scrub_package_metadata(destination)
+    return destination
+
+
+def apply_template_postprocess(docx_path: Path, profile: dict[str, Any]) -> None:
+    """Preserve uploaded template geometry/styles while adding safe release fields."""
+    document = Document(docx_path)
+    header_cfg = profile.get("header", {})
+    footer_cfg = profile.get("footer", {})
+    normal_style = document.styles["Normal"]
+    font_name = normal_style.font.name or profile.get("body", {}).get("font", "Times New Roman")
+    for section in document.sections:
+        if header_cfg.get("text"):
+            paragraph = section.header.paragraphs[0]
+            paragraph.text = str(header_cfg["text"])
+            suppress_line_numbers(paragraph)
+            paragraph.alignment = {"left": WD_ALIGN_PARAGRAPH.LEFT, "center": WD_ALIGN_PARAGRAPH.CENTER, "right": WD_ALIGN_PARAGRAPH.RIGHT}.get(header_cfg.get("alignment"), WD_ALIGN_PARAGRAPH.RIGHT)
+            for run in paragraph.runs:
+                run.font.name = font_name
+                run.font.size = Pt(float(header_cfg.get("size_pt", 8)))
+        if footer_cfg.get("page_number", True):
+            paragraph = section.footer.paragraphs[0]
+            paragraph.clear()
+            suppress_line_numbers(paragraph)
+            paragraph.alignment = {"left": WD_ALIGN_PARAGRAPH.LEFT, "center": WD_ALIGN_PARAGRAPH.CENTER, "right": WD_ALIGN_PARAGRAPH.RIGHT}.get(footer_cfg.get("alignment"), WD_ALIGN_PARAGRAPH.CENTER)
+            add_field(paragraph, "PAGE")
+    set_update_fields(document)
+    document.core_properties.author = ""
+    document.core_properties.last_modified_by = ""
+    document.core_properties.comments = ""
+    document.save(docx_path)
+    scrub_package_metadata(docx_path)
+
+
+def theme_font_signature(docx_path: Path) -> dict[str, dict[str, str | None]]:
+    """Return semantic theme-font mappings, ignoring harmless package reserialization."""
+    with zipfile.ZipFile(docx_path, "r") as archive:
+        theme_path = "word/theme/theme1.xml"
+        if theme_path not in archive.namelist():
+            return {}
+        root = LET.fromstring(archive.read(theme_path))
+    namespace = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
+    result: dict[str, dict[str, str | None]] = {}
+    for family in ("majorFont", "minorFont"):
+        node = root.find(f".//a:fontScheme/a:{family}", namespaces=namespace)
+        if node is None:
+            continue
+        values: dict[str, str | None] = {}
+        for child in node:
+            key = LET.QName(child).localname
+            if key == "font":
+                key = f"script:{child.get('script')}"
+            values[key] = child.get("typeface")
+        result[family] = values
+    return result
+
+
+def paragraph_style_signature(style: Any) -> dict[str, Any]:
+    fmt = style.paragraph_format
+    font_theme = None
+    rpr = style.element.rPr
+    if rpr is not None and rpr.rFonts is not None:
+        font_theme = rpr.rFonts.get(qn("w:asciiTheme")) or rpr.rFonts.get(qn("w:hAnsiTheme"))
+    line_spacing = fmt.line_spacing
+    if hasattr(line_spacing, "pt"):
+        line_spacing = round(line_spacing.pt, 3)
+    elif line_spacing is not None:
+        line_spacing = float(line_spacing)
+    return {
+        "name": style.name,
+        "font": style.font.name,
+        "font_theme": font_theme,
+        "size_pt": round(style.font.size.pt, 3) if style.font.size else None,
+        "bold": style.font.bold,
+        "italic": style.font.italic,
+        "color": str(style.font.color.rgb) if style.font.color and style.font.color.rgb else None,
+        "alignment": int(fmt.alignment) if fmt.alignment is not None else None,
+        "space_before_pt": round(fmt.space_before.pt, 3) if fmt.space_before else None,
+        "space_after_pt": round(fmt.space_after.pt, 3) if fmt.space_after else None,
+        "left_indent_in": round(fmt.left_indent / 914400, 4) if fmt.left_indent else None,
+        "first_line_indent_in": round(fmt.first_line_indent / 914400, 4) if fmt.first_line_indent else None,
+        "line_spacing": line_spacing,
+        "keep_with_next": fmt.keep_with_next,
+    }
+
+
+def template_fidelity_report(docx_path: Path, contract: dict[str, Any]) -> dict[str, Any]:
+    """Fail closed when an authoritative uploaded template did not control the output."""
+    document = Document(docx_path)
+    checks: list[dict[str, Any]] = []
+    expected_theme_fonts = contract.get("theme_fonts", {})
+    actual_theme_fonts = theme_font_signature(docx_path)
+    theme_unchanged = bool(expected_theme_fonts) and actual_theme_fonts == expected_theme_fonts
+    if expected_theme_fonts:
+        checks.append({
+            "id": "template_theme_fonts",
+            "status": "pass" if theme_unchanged else "fail",
+            "expected": expected_theme_fonts,
+            "actual": actual_theme_fonts,
+        })
+    expected_sections = contract.get("sections", [])
+    if expected_sections:
+        expected = expected_sections[0]
+        actual_section = document.sections[0]
+        actual = {
+            "page_width_in": round(actual_section.page_width / 914400, 4),
+            "page_height_in": round(actual_section.page_height / 914400, 4),
+            "margins_in": {
+                "top": round(actual_section.top_margin / 914400, 4),
+                "bottom": round(actual_section.bottom_margin / 914400, 4),
+                "left": round(actual_section.left_margin / 914400, 4),
+                "right": round(actual_section.right_margin / 914400, 4),
+            },
+        }
+        page_ok = actual["page_width_in"] == expected["page_width_in"] and actual["page_height_in"] == expected["page_height_in"]
+        margin_ok = all(abs(actual["margins_in"][key] - expected["margins_in"][key]) <= 0.01 for key in expected["margins_in"])
+        checks.append({"id": "template_page_geometry", "status": "pass" if page_ok and margin_ok else "fail", "expected": expected, "actual": actual})
+    expected_styles = {item["name"]: item for item in contract.get("styles", [])}
+    for name in ("Normal", "Title", "Heading 1", "Heading 2", "Heading 3", "Caption", "Bibliography"):
+        expected = expected_styles.get(name)
+        if not expected:
+            continue
+        try:
+            actual_style = document.styles[name]
+        except KeyError:
+            checks.append({"id": f"template_style_{name}", "status": "fail", "reason": "missing"})
+            continue
+        actual = paragraph_style_signature(actual_style)
+        comparable = {key: value for key, value in expected.items() if key in actual and value is not None}
+        def equivalent(key: str, expected_value: Any) -> bool:
+            actual_value = actual[key]
+            if actual_value == expected_value:
+                return True
+            if expected_value is False and actual_value is None:
+                return True
+            if key == "font" and actual_value is None:
+                return bool(
+                    theme_unchanged
+                    and expected.get("font_theme")
+                    and actual.get("font_theme") == expected.get("font_theme")
+                )
+            return False
+
+        ok = all(equivalent(key, value) for key, value in comparable.items())
+        checks.append({"id": f"template_style_{name}", "status": "pass" if ok else "fail", "expected": comparable, "actual": actual})
+    return {"passed": bool(checks) and all(item["status"] == "pass" for item in checks), "checks": checks}
+
+
 def apply_title_page_overrides(docx_path: Path) -> None:
     """Keep identifying title pages separate from anonymous running heads/line numbers."""
     document = Document(docx_path)
@@ -779,7 +959,16 @@ def run_pandoc(source: Path, output: Path, *, bibliography: Path | None, csl: Pa
         command.extend(["--citeproc", f"--bibliography={bibliography}"])
     if csl:
         command.append(f"--csl={csl}")
-    proc = subprocess.run(command, capture_output=True, text=True, timeout=180, check=False)
+    try:
+        proc = subprocess.run(command, capture_output=True, text=True, timeout=180, check=False)
+    except subprocess.TimeoutExpired as exc:
+        detail = (exc.stderr or exc.stdout or "").strip() if isinstance(exc.stderr or exc.stdout, str) else ""
+        return {
+            "status": "failed",
+            "editor": editor,
+            "error": f"Editor automation timed out after 180s" + (f": {detail}" if detail else ""),
+            "command": command,
+        }
     if proc.returncode != 0 or not output.is_file():
         raise FormatterError(f"Pandoc failed ({proc.returncode}): {(proc.stderr or proc.stdout).strip()}")
     return command
@@ -952,8 +1141,10 @@ def format_submission(config_path: Path, *, editor_override: str | None = None, 
     supplementary = [resolve_inside(base, value, f"supplementary[{index}]", required=True) for index, value in enumerate(config.get("supplementary", []))]
     profile = yaml_load(profile_path)
     validate_profile(profile)
+    template_mode = config.get("template_mode", "profile_overlay")
+    template_contract = None
     if template and contract_path:
-        load_template_contract(contract_path, template)
+        template_contract = load_template_contract(contract_path, template)
 
     source_text = manuscript.read_text(encoding="utf-8")
     refusal = scan_refusal_markers(source_text)
@@ -1009,23 +1200,38 @@ def format_submission(config_path: Path, *, editor_override: str | None = None, 
             clean_md = temp / "manuscript.md"
             manuscript_for_variant(manuscript, clean_md, anonymized=variant == "anonymized")
             clean_md.write_text(strip_ars_comments(clean_md.read_text(encoding="utf-8")), encoding="utf-8", newline="\n")
-            reference_doc = template
-            if reference_doc is None:
+            reference_doc = None
+            if template is not None:
+                reference_doc = prepare_reference_doc(template, temp / "uploaded-reference.docx")
+            else:
                 reference_doc = temp / "reference.docx"
                 build_reference_doc(profile, reference_doc)
             core_docx = variant_dir / f"manuscript-{variant}.docx"
             pandoc_command = run_pandoc(clean_md, core_docx, bibliography=bibliography, csl=csl, reference_doc=reference_doc, resource_path=base)
-            apply_profile(core_docx, profile)
+            if template_mode == "template_authoritative":
+                apply_template_postprocess(core_docx, profile)
+            else:
+                apply_profile(core_docx, profile)
             structural = verify_docx(core_docx, source_manifest=source_manifest, blind_terms=config.get("blind_terms", []) if variant == "anonymized" else [])
             json_dump(structural, qa_dir / f"structural-{variant}.json")
             if not structural["passed"]:
                 failed = ", ".join(item["id"] for item in structural["checks"] if item["status"] == "fail")
                 raise FormatterError(f"Structural verification failed for {variant}: {failed}")
+            template_fidelity = {"passed": True, "checks": [], "status": "not_applicable"}
+            if template_mode == "template_authoritative" and template_contract:
+                template_fidelity = template_fidelity_report(core_docx, template_contract)
+                template_fidelity["status"] = "passed" if template_fidelity["passed"] else "failed"
+                json_dump(template_fidelity, qa_dir / f"template-fidelity-{variant}.json")
+                if not template_fidelity["passed"]:
+                    failed = ", ".join(item["id"] for item in template_fidelity["checks"] if item["status"] == "fail")
+                    raise FormatterError(f"Uploaded template fidelity failed for {variant}: {failed}")
             files.append({"role": f"core_{variant}", "path": str(core_docx.relative_to(run_dir)), "sha256": sha256_file(core_docx)})
 
             editor_report = {"status": "not_requested", "editor": editor_selected}
             reviewed_docx = None
             editor_pdf = None
+            reviewed_structural = {"passed": True, "checks": [], "status": "not_applicable"}
+            reviewed_template_fidelity = {"passed": True, "checks": [], "status": "not_applicable"}
             if editor_selected != "none":
                 reviewed_docx = variant_dir / f"{editor_selected}-reviewed-{variant}.docx"
                 editor_pdf = variant_dir / f"{editor_selected}-reviewed-{variant}.pdf"
@@ -1033,11 +1239,19 @@ def format_submission(config_path: Path, *, editor_override: str | None = None, 
                 if editor_report.get("status") != "passed":
                     raise FormatterError(f"{editor_selected} automation failed: {editor_report.get('error') or editor_report.get('reason')}")
                 scrub_package_metadata(reviewed_docx)
-                reviewed_verify = verify_docx(reviewed_docx, source_manifest=source_manifest, blind_terms=config.get("blind_terms", []) if variant == "anonymized" else [])
-                json_dump(reviewed_verify, qa_dir / f"structural-{editor_selected}-{variant}.json")
-                if not reviewed_verify["passed"]:
-                    failed = ", ".join(item["id"] for item in reviewed_verify["checks"] if item["status"] == "fail")
+                reviewed_structural = verify_docx(reviewed_docx, source_manifest=source_manifest, blind_terms=config.get("blind_terms", []) if variant == "anonymized" else [])
+                reviewed_structural["status"] = "passed" if reviewed_structural["passed"] else "failed"
+                json_dump(reviewed_structural, qa_dir / f"structural-{editor_selected}-{variant}.json")
+                if not reviewed_structural["passed"]:
+                    failed = ", ".join(item["id"] for item in reviewed_structural["checks"] if item["status"] == "fail")
                     raise FormatterError(f"{editor_selected} reviewed copy failed structural verification: {failed}")
+                if template_mode == "template_authoritative" and template_contract:
+                    reviewed_template_fidelity = template_fidelity_report(reviewed_docx, template_contract)
+                    reviewed_template_fidelity["status"] = "passed" if reviewed_template_fidelity["passed"] else "failed"
+                    json_dump(reviewed_template_fidelity, qa_dir / f"template-fidelity-{editor_selected}-{variant}.json")
+                    if not reviewed_template_fidelity["passed"]:
+                        failed = ", ".join(item["id"] for item in reviewed_template_fidelity["checks"] if item["status"] == "fail")
+                        raise FormatterError(f"{editor_selected} changed uploaded template geometry or core styles: {failed}")
                 files.append({"role": f"{editor_selected}_reviewed_{variant}", "path": str(reviewed_docx.relative_to(run_dir)), "sha256": sha256_file(reviewed_docx)})
                 if editor_pdf.is_file():
                     files.append({"role": f"{editor_selected}_pdf_{variant}", "path": str(editor_pdf.relative_to(run_dir)), "sha256": sha256_file(editor_pdf)})
@@ -1066,6 +1280,9 @@ def format_submission(config_path: Path, *, editor_override: str | None = None, 
                 "libreoffice_render": lo_report,
                 "editor_render": editor_render,
                 "structural": structural,
+                "reviewed_structural": reviewed_structural,
+                "template_fidelity": template_fidelity,
+                "reviewed_template_fidelity": reviewed_template_fidelity,
             }
 
     if title_page:
@@ -1079,13 +1296,18 @@ def format_submission(config_path: Path, *, editor_override: str | None = None, 
             if title_refusal:
                 raise FormatterError("Title-page evidence gate refused formatting")
             clean_title.write_text(strip_ars_comments(title_text), encoding="utf-8", newline="\n")
-            reference_doc = template
-            if reference_doc is None:
+            reference_doc = None
+            if template is not None:
+                reference_doc = prepare_reference_doc(template, temp / "uploaded-reference.docx")
+            else:
                 reference_doc = temp / "reference.docx"
                 build_reference_doc(profile, reference_doc)
             core_title = title_dir / "title-page.docx"
             pandoc_command = run_pandoc(clean_title, core_title, bibliography=None, csl=None, reference_doc=reference_doc, resource_path=base)
-            apply_profile(core_title, profile)
+            if template_mode == "template_authoritative":
+                apply_template_postprocess(core_title, profile)
+            else:
+                apply_profile(core_title, profile)
             apply_title_page_overrides(core_title)
             title_structural = verify_docx(core_title)
             json_dump(title_structural, qa_dir / "structural-title-page.json")
@@ -1136,6 +1358,7 @@ def format_submission(config_path: Path, *, editor_override: str | None = None, 
             "csl": {"path": str(csl), "sha256": sha256_file(csl)} if csl else None,
             "profile": {"path": str(profile_path), "sha256": sha256_file(profile_path), "id": profile["id"], "status": profile.get("status")},
             "template": {"path": str(template), "sha256": sha256_file(template)} if template else None,
+            "template_contract": {"path": str(contract_path), "sha256": sha256_file(contract_path), "mode": template_mode} if contract_path else None,
             "title_page": {"path": str(title_page), "sha256": sha256_file(title_page)} if title_page else None,
             "supplementary": [{"path": str(path), "sha256": sha256_file(path)} for path in supplementary if path],
         },
@@ -1171,10 +1394,7 @@ def distill_template(template: Path, output_dir: Path, *, source_url: str | None
             },
             "different_first_page": bool(section.different_first_page_header_footer),
         })
-    styles = []
-    for style in document.styles:
-        if style.type == 1:
-            styles.append({"name": style.name, "font": style.font.name, "size_pt": style.font.size.pt if style.font.size else None, "bold": style.font.bold, "italic": style.font.italic})
+    styles = [paragraph_style_signature(style) for style in document.styles if style.type == 1]
     package_parts = []
     with zipfile.ZipFile(template, "r") as archive:
         for info in archive.infolist():
@@ -1184,12 +1404,13 @@ def distill_template(template: Path, output_dir: Path, *, source_url: str | None
         "reference": {"filename": template.name, "sha256": before, "source_url": source_url, "distilled_at": utc_now()},
         "sections": sections,
         "styles": styles,
+        "theme_fonts": theme_font_signature(template),
         "structure": docx_manifest(template),
         "package_parts": package_parts,
         "mode": "style_reference",
         "editable_slots": [],
         "preserve_only": [item["path"] for item in package_parts if item["path"].startswith(("customXml/", "word/theme/", "word/numbering"))],
-        "unresolved": [],
+        "unresolved": ["multiple_sections_require_explicit_slot_mapping"] if len(sections) > 1 else [],
         "render": {"status": "not_requested"},
     }
     if render:

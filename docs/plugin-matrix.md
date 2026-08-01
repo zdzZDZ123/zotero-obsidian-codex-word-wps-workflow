@@ -42,7 +42,7 @@ The global research capability comes from `academic-research-suite` in [`Imbad02
 | `format-submission-manuscript` | 1.0.0 | Submission contract, deterministic DOCX, privacy and page QA |
 | Pandoc | 3.10 | Markdown conversion and CSL citeproc |
 | LibreOffice | 26.2.4.2 | Independent headless PDF rendering |
-| WPS Office | 12.1.0.27458 | Verified Windows editor/field/PDF backend |
+| WPS Office | 12.1.0.28032 | Verified Windows editor/field/PDF backend |
 | Microsoft Word | not installed | Auto-enabled only when `Word.Application` resolves to `WINWORD.EXE` |
 
 See [`publication-formatting.md`](publication-formatting.md). WPS, Word, LibreOffice, Pandoc, fonts, and journal templates are never redistributed by this repository.

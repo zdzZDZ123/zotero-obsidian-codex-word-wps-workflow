@@ -11,6 +11,18 @@ $ErrorActionPreference = 'Stop'
 $app = $null
 $document = $null
 $started = Get-Date
+$baselineWpsIds = @()
+$ownedWpsIds = @()
+
+if ($Editor -eq 'wps') {
+    $baselineWpsIds = @(Get-Process -Name 'wps' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
+}
+
+function Update-OwnedWpsProcesses {
+    if ($Editor -ne 'wps') { return }
+    $current = @(Get-Process -Name 'wps' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
+    $script:ownedWpsIds = @($script:ownedWpsIds + @($current | Where-Object { $_ -notin $script:baselineWpsIds }) | Sort-Object -Unique)
+}
 
 function Get-ComServer([string]$ProgId) {
     $clsidPath = "Registry::HKEY_CLASSES_ROOT\$ProgId\CLSID"
@@ -41,9 +53,12 @@ try {
     }
 
     $app = New-Object -ComObject $progId
+    Start-Sleep -Milliseconds 250
+    Update-OwnedWpsProcesses
     $app.Visible = [bool]$Visible
     try { $app.DisplayAlerts = 0 } catch { }
     $document = $app.Documents.Open($outputDocxFull)
+    Update-OwnedWpsProcesses
 
     $updatedFields = 0
     try { $updatedFields += [int]$document.Fields.Update() } catch { }
@@ -131,4 +146,14 @@ finally {
     if ($null -ne $app) { [System.Runtime.InteropServices.Marshal]::FinalReleaseComObject($app) | Out-Null }
     [GC]::Collect()
     [GC]::WaitForPendingFinalizers()
+    if ($Editor -eq 'wps') {
+        Start-Sleep -Milliseconds 750
+        Update-OwnedWpsProcesses
+        foreach ($processId in $ownedWpsIds) {
+            $owned = Get-Process -Id $processId -ErrorAction SilentlyContinue
+            if ($null -ne $owned) {
+                try { Stop-Process -Id $processId -Force -ErrorAction Stop } catch { }
+            }
+        }
+    }
 }

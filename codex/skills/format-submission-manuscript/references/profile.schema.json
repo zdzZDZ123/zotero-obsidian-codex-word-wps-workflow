@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/zdzZDZ123/zotero-obsidian-codex-research-workflow/schemas/profile.schema.json",
+  "$id": "https://github.com/zdzZDZ123/zotero-obsidian-codex-word-wps-workflow/schemas/profile.schema.json",
   "title": "Journal formatting profile",
   "type": "object",
   "additionalProperties": false,

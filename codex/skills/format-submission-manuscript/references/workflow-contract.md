@@ -17,6 +17,7 @@ title_page: title-page.md
 bibliography: references.json
 csl: styles/journal.csl
 journal_profile: profiles/journal.yaml
+template_mode: profile_overlay
 editor: auto
 variants: [anonymized, full]
 outputs: [docx, pdf]
@@ -28,6 +29,11 @@ supplementary: [assets/supplementary-table.docx]
 ```
 
 Declare both `template` and `template_contract`, or neither. Run `distill` before first use and after every template change. The formatter fails closed when the retained template SHA-256 no longer matches.
+
+- `profile_overlay` is the default: the uploaded/official DOCX supplies Word style definitions while the explicit YAML profile controls final page geometry and named styles.
+- `template_authoritative` makes the retained DOCX/DOTX the page-and-style authority. The formatter uses a privacy-sanitized working reference, verifies page geometry, semantic theme-font mappings, and core style signatures against the distilled contract before and after the Word/WPS reviewed-copy save, and fails if the uploaded format did not survive. The YAML profile still supplies safe running-header text, page-number behavior, output variants, and provenance.
+
+An uploaded manuscript may be used as a **format reference** only when the user is authorized to use it. Its scientific prose is never imported into the new manuscript, the retained file is never modified, and identifying header/footer text is removed from the working reference before Pandoc runs.
 
 ## Profile provenance
 
