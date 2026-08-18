@@ -1,0 +1,7 @@
+iThenticate Similarity Report
+Match 1
+Matched text: The intervention reduced stress by 15% among 120 participants.
+Source: Prior study by the authors
+Similarity: 24%
+Classification: SELF_REUSE
+Severity: MODERATE

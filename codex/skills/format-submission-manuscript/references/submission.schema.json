@@ -22,7 +22,8 @@
     "output_root": {"type": "string"},
     "open_after": {"type": "boolean"},
     "desktop_copy": {"type": "boolean"},
-    "blind_terms": {"type": "array", "items": {"type": "string"}}
+    "blind_terms": {"type": "array", "items": {"type": "string"}},
+    "originality_manifest": {"type": "string", "minLength": 1}
   },
   "dependentRequired": {
     "template": ["template_contract"],

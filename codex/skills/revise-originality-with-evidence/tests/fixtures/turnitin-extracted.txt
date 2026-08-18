@@ -1,0 +1,7 @@
+Turnitin Similarity Report
+Match 1
+Matched text: Nursing students reported lower stress after the intervention.
+Source: Journal of Nursing Education
+Similarity: 18%
+Classification: CLOSE_MATCH
+Severity: SERIOUS

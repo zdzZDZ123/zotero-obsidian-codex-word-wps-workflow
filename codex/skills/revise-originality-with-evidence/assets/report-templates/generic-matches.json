@@ -1,0 +1,15 @@
+{
+  "vendor": "generic",
+  "matches": [
+    {
+      "matched_excerpt": "Replace with the exact reported excerpt",
+      "matched_source": "Replace with source title or URL",
+      "score": null,
+      "report_page": null,
+      "paragraph_id": null,
+      "classification": "CLOSE_MATCH",
+      "severity": "SERIOUS",
+      "citation_key": null
+    }
+  ]
+}

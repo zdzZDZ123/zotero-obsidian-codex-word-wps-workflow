@@ -1,0 +1,4 @@
+interface:
+  display_name: "Evidence-grounded originality revision"
+  short_description: "Repair similarity findings without changing evidence"
+  default_prompt: "Use $revise-originality-with-evidence to create a traceable originality-revision copy of my manuscript from Zotero evidence and my exported similarity report."

@@ -56,6 +56,19 @@ Configure Better BibTeX automatic export to `references.json` or `references.bib
 
 The first command must distinguish genuine Word from a WPS-owned `Word.Application` registration. `auto` uses genuine Word first and otherwise WPS. When no verified editor exists, choose `none` to generate the core and LibreOffice PDF while recording editor QA as not applicable.
 
+If ARS originality screening triggered the remediation loop, format only the
+reviewed semantic copy and bind its approval manifest:
+
+```yaml
+manuscript: originality-output/manuscript-originality-reviewed.md
+originality_manifest: originality-output/originality-qa-report.json
+```
+
+The manifest is optional for manuscripts that never entered remediation. Once
+declared, it is a hard gate: `qa_passed`, the exact manuscript SHA-256, and an
+explicit named approval are all required. See
+[Evidence-grounded originality revision](originality-revision.md).
+
 The Windows bridge records the WPS processes that existed before automation and cleans up only the processes created by that bridge. This prevents consecutive formatting jobs from colliding without terminating a user's pre-existing WPS session. Editor timeouts are returned as explicit QA failures.
 
 The verified Windows acceptance matrix and its limitations are recorded in [WPS acceptance evidence](wps-acceptance.md).

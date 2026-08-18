@@ -183,7 +183,7 @@ def validate_submission(config: dict[str, Any]) -> None:
     allowed = {
         "schema_version", "manuscript", "bibliography", "csl", "journal_profile", "template",
         "template_contract", "template_mode", "editor", "variants", "outputs", "output_root", "open_after",
-        "desktop_copy", "blind_terms", "title_page", "supplementary",
+        "desktop_copy", "blind_terms", "title_page", "supplementary", "originality_manifest",
     }
     strict_keys(config, allowed, "submission")
     for key in ("schema_version", "manuscript", "journal_profile"):
@@ -208,6 +208,28 @@ def validate_submission(config: dict[str, Any]) -> None:
         raise FormatterError("template_authoritative mode requires template and template_contract")
     if config.get("supplementary") is not None and not isinstance(config["supplementary"], list):
         raise FormatterError("supplementary must be a list of project-relative files")
+
+
+def validate_originality_gate(manifest_path: Path, manuscript: Path) -> dict[str, Any]:
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise FormatterError(f"Cannot read originality QA manifest: {exc}") from exc
+    if not isinstance(manifest, dict) or manifest.get("schema_version") != SCHEMA_VERSION:
+        raise FormatterError("Originality QA manifest must use schema_version 1")
+    if manifest.get("status") != "qa_passed":
+        raise FormatterError(f"Originality QA gate has not passed: {manifest.get('status')}")
+    if manifest.get("manuscript_sha256") != sha256_file(manuscript):
+        raise FormatterError("Originality QA manifest does not match the configured manuscript")
+    approval = manifest.get("approval")
+    if not isinstance(approval, dict) or approval.get("explicit") is not True or not approval.get("reviewer"):
+        raise FormatterError("Originality QA manifest lacks explicit named approval")
+    return manifest
+
+
+def require_originality_manifest(source_text: str, gate: dict[str, Any] | None) -> None:
+    if "<!-- originality-review: manifest-required -->" in source_text and not gate:
+        raise FormatterError("This originality-reviewed manuscript requires originality_manifest")
 
 
 def command_version(path: str, args: list[str] | None = None) -> str | None:
@@ -1139,6 +1161,8 @@ def format_submission(config_path: Path, *, editor_override: str | None = None, 
     contract_path = resolve_inside(base, config.get("template_contract"), "template_contract", required=bool(config.get("template_contract")))
     title_page = resolve_inside(base, config.get("title_page"), "title_page", required=bool(config.get("title_page")))
     supplementary = [resolve_inside(base, value, f"supplementary[{index}]", required=True) for index, value in enumerate(config.get("supplementary", []))]
+    originality_path = resolve_inside(base, config.get("originality_manifest"), "originality_manifest", required=bool(config.get("originality_manifest")))
+    originality_gate = validate_originality_gate(originality_path, manuscript) if originality_path else None
     profile = yaml_load(profile_path)
     validate_profile(profile)
     template_mode = config.get("template_mode", "profile_overlay")
@@ -1147,6 +1171,7 @@ def format_submission(config_path: Path, *, editor_override: str | None = None, 
         template_contract = load_template_contract(contract_path, template)
 
     source_text = manuscript.read_text(encoding="utf-8")
+    require_originality_manifest(source_text, originality_gate)
     refusal = scan_refusal_markers(source_text)
     if refusal:
         raise FormatterError("Citation provenance hard gate refused formatting: " + "; ".join(f"{item['kind']}@L{item['line']}" for item in refusal))
@@ -1361,6 +1386,12 @@ def format_submission(config_path: Path, *, editor_override: str | None = None, 
             "template_contract": {"path": str(contract_path), "sha256": sha256_file(contract_path), "mode": template_mode} if contract_path else None,
             "title_page": {"path": str(title_page), "sha256": sha256_file(title_page)} if title_page else None,
             "supplementary": [{"path": str(path), "sha256": sha256_file(path)} for path in supplementary if path],
+            "originality_manifest": {
+                "path": str(originality_path),
+                "sha256": sha256_file(originality_path),
+                "status": originality_gate.get("status"),
+                "reviewer": originality_gate.get("approval", {}).get("reviewer"),
+            } if originality_path and originality_gate else None,
         },
         "source_semantics": source_manifest,
         "environment": detect_environment(),

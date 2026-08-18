@@ -1,20 +1,24 @@
-# ZOCW Research & Publication Workflow
+# ZOCW Evidence-to-Originality Research & Publication Workflow
 
-[![Version](https://img.shields.io/badge/version-v0.1.0-blue)](https://github.com/zdzZDZ123/zotero-obsidian-codex-word-wps-workflow/releases/tag/v0.1.0)
+[![Version](https://img.shields.io/badge/version-v0.2.0-blue)](https://github.com/zdzZDZ123/zotero-obsidian-codex-word-wps-workflow/releases/tag/v0.2.0)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Validate](https://github.com/zdzZDZ123/zotero-obsidian-codex-word-wps-workflow/actions/workflows/validate.yml/badge.svg)](https://github.com/zdzZDZ123/zotero-obsidian-codex-word-wps-workflow/actions/workflows/validate.yml)
 [![WPS](https://img.shields.io/badge/WPS%20Writer-12.1%20verified-c51a4a)](docs/publication-formatting.md)
 [![DOCX/PDF](https://img.shields.io/badge/DOCX%20%2B%20PDF-page--QA%20gated-4f81bd)](docs/publication-formatting.md)
+[![Originality](https://img.shields.io/badge/originality-evidence--grounded-6c63ff)](docs/originality-revision.md)
 
 [简体中文](README.zh-CN.md)
 
-**Zotero → Obsidian → Codex → Word/WPS, from evidence to a QA-gated submission package.**
+**Zotero → Obsidian → Codex originality repair → Word/WPS, from evidence to a QA-gated submission package.**
 
 ZOCW Research & Publication Workflow is an open, Codex-native system for
 traceable academic research and deterministic manuscript delivery. Zotero owns
 the evidence and citation identity, Obsidian preserves research knowledge,
 Codex performs evidence-aware research and writing, and genuine Microsoft Word
 or WPS Writer refreshes fields, exports PDF, and validates editor compatibility.
+When ARS finds a blocking originality issue, a separate local skill traces each
+repair back to Zotero evidence, preserves scientific invariants, and requires a
+full changed-paragraph recheck plus named approval before formatting.
 
 This repository distributes the workflow as a reproducible configuration and
 prompt suite. It includes a sanitized Obsidian Vault, local research skills,
@@ -27,8 +31,10 @@ and third-party plugin binaries are intentionally excluded.
 ```mermaid
 flowchart LR
   Z["Zotero<br/>evidence + citation identity"] --> O["Obsidian<br/>semantic manuscript + knowledge base"]
-  O --> C["Codex<br/>research + writing + formatting orchestration"]
-  C --> D["Immutable core DOCX"]
+  O --> C["Codex + ARS<br/>research, writing + integrity screening"]
+  C --> R["Evidence-grounded originality revision<br/>ledger + recheck + approval"]
+  R --> F["Codex + Pandoc/CSL<br/>deterministic formatting"]
+  F --> D["Immutable core DOCX"]
   D --> E["Microsoft Word or WPS Writer<br/>fields + reviewed copy + PDF"]
   D --> L["LibreOffice<br/>independent PDF render"]
   E --> Q["Page-by-page QA<br/>release manifest + hashes"]
@@ -42,6 +48,7 @@ flowchart LR
 | Evidence | Zotero + Better BibTeX | Authoritative metadata, PDFs, annotations, citation keys |
 | Knowledge | Obsidian | Source notes, evergreen knowledge, project state, semantic manuscript |
 | Research | Codex + academic research skills | Retrieval, synthesis, drafting, review, evidence gates |
+| Originality | Codex + ARS + Zotero evidence | Local report import, traceable revision copy, invariant/recheck/approval gates |
 | Formatting | Codex + Pandoc/CSL | Deterministic styles, citations, tables, figures, anonymous/title-page packages |
 | Compatibility | Word/WPS + LibreOffice | Field refresh, reviewed DOCX, PDF export, independent page rendering |
 | Release | Codex visual QA | Privacy report, structural comparison, page images, SHA-256 manifest |
@@ -86,6 +93,23 @@ mode, where page geometry and core style signatures must match both before and
 after WPS produces the reviewed copy. Reference prose and identifying
 header/footer text are not copied into the new manuscript.
 
+## Evidence-Grounded Originality Revision
+
+`revise-originality-with-evidence` consumes ARS Phase D findings and optional
+reports lawfully exported by the user from CNKI, Turnitin, or iThenticate. It
+does not log in to or scrape those services. The skill normalizes findings,
+anchors them to stable Markdown paragraphs, requires a Zotero citation key plus
+verified page/location for every repair, and generates a separate semantic copy
+with a change ledger.
+
+The deterministic helper blocks changed statistics, sample sizes, units,
+protected terms, citation loss, table/figure references, headings, images, and
+direct quotations. All reviewed paragraphs must then pass ARS Phase D,
+citation, data, and fact checks. Only explicit named approval of the exact file
+hash emits `qa_passed`; the Word/WPS formatter refuses any other state. It never
+promises or optimizes for a target similarity percentage. See
+[Originality revision](docs/originality-revision.md).
+
 ## Responsibility Boundaries
 
 This repository does not replace Zotero, Obsidian, Codex, Word/WPS, or the
@@ -96,7 +120,8 @@ upstream academic-research skill suite.
 - Use **Obsidian** for project state, reusable knowledge, research logs,
   synthesis matrices, and durable outputs.
 - Use **Codex** for research routing, evidence retrieval, synthesis, drafting,
-  review, deterministic formatting, QA, and controlled writes across stores.
+  originality remediation, review, deterministic formatting, QA, and
+  controlled writes across stores.
 - Use **Microsoft Word or WPS Writer** only as a compatibility and final-review
   backend. The semantic manuscript remains the source of truth.
 - Use
@@ -125,10 +150,13 @@ zotero/README.md
 codex/README.md
 prompts/01-setup-obsidian.md ... 04-run-first-research.md
 prompts/05-setup-publication-formatting.md
+prompts/06-setup-originality-revision.md
+codex/skills/revise-originality-with-evidence/
 codex/skills/format-submission-manuscript/
 docs/component-lock.json
 docs/architecture.md
 docs/publication-formatting.md
+docs/originality-revision.md
 docs/security-model.md
 scripts/validate-repo.ps1
 scripts/Audit-ObsidianEnvironment.ps1
@@ -137,11 +165,15 @@ scripts/Install-PublicationFormatting.ps1
 scripts/Install-PublicationFormatting-macOS.command
 scripts/Format-ResearchManuscript.ps1
 scripts/Format-ResearchManuscript-macOS.command
+scripts/Install-OriginalityRevision.ps1
+scripts/Install-OriginalityRevision-macOS.command
+scripts/Revise-ResearchOriginality.ps1
+scripts/Revise-ResearchOriginality-macOS.command
 ```
 
 ## Versioning
 
-The current workflow release is `v0.1.0`. Application and plugin baselines are
+The current workflow release is `v0.2.0`. Application and plugin baselines are
 recorded independently in [`docs/component-lock.json`](docs/component-lock.json).
 
 Pinned versions represent a tested snapshot. When a pinned release is
@@ -165,6 +197,7 @@ Then give the deployment prompts to Codex in order:
 3. [`prompts/03-connect-codex.md`](prompts/03-connect-codex.md)
 4. [`prompts/04-run-first-research.md`](prompts/04-run-first-research.md)
 5. [`prompts/05-setup-publication-formatting.md`](prompts/05-setup-publication-formatting.md)
+6. [`prompts/06-setup-originality-revision.md`](prompts/06-setup-originality-revision.md)
 
 The prompts instruct Codex to inspect the actual operating system, find each
 official application/plugin source, preserve existing user data, configure the
@@ -179,6 +212,20 @@ Follow its current installation instructions, or use the baseline recorded in
 
 After installation, open a new Codex conversation and verify that
 `academic-research-suite` or `ARS-Codex` appears in `/skills`.
+
+## Install The Originality Revision Layer
+
+Run the platform installer, restart Codex, and confirm that
+`revise-originality-with-evidence` appears in `/skills`.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Install-OriginalityRevision.ps1
+.\scripts\Revise-ResearchOriginality.ps1 doctor --self-test
+```
+
+The layer processes authorized exported reports locally and outputs semantic
+Markdown, a change ledger, recheck request, disclosure draft, and a hash-bound
+QA manifest. See [`docs/originality-revision.md`](docs/originality-revision.md).
 
 ## Install The Publication Layer
 

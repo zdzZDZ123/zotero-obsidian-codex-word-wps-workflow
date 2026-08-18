@@ -15,13 +15,23 @@ $required = @(
     'prompts/02-setup-zotero.md',
     'prompts/03-connect-codex.md',
     'prompts/05-setup-publication-formatting.md',
+    'prompts/06-setup-originality-revision.md',
     'docs/publication-formatting.md',
+    'docs/originality-revision.md',
     'codex/skills/format-submission-manuscript/SKILL.md',
     'codex/skills/format-submission-manuscript/agents/openai.yaml',
     'codex/skills/format-submission-manuscript/references/submission.schema.json',
     'codex/skills/format-submission-manuscript/references/profile.schema.json',
+    'codex/skills/revise-originality-with-evidence/SKILL.md',
+    'codex/skills/revise-originality-with-evidence/agents/openai.yaml',
+    'codex/skills/revise-originality-with-evidence/references/originality.schema.json',
+    'codex/skills/revise-originality-with-evidence/scripts/originality_revision.py',
     'scripts/Install-PublicationFormatting.ps1',
     'scripts/Install-PublicationFormatting-macOS.command',
+    'scripts/Install-OriginalityRevision.ps1',
+    'scripts/Install-OriginalityRevision-macOS.command',
+    'scripts/Revise-ResearchOriginality.ps1',
+    'scripts/Revise-ResearchOriginality-macOS.command',
     'obsidian/vault-template/AGENTS.md',
     'obsidian/vault-template/.obsidian/community-plugins.json',
     'obsidian/vault-template/.agents/skills/run-traceable-research/SKILL.md'
@@ -93,17 +103,23 @@ foreach ($skill in $skillFiles) {
     }
 }
 
-$codexSkill = Join-Path $root 'codex/skills/format-submission-manuscript/SKILL.md'
-if (Test-Path -LiteralPath $codexSkill -PathType Leaf) {
-    $skillContent = Get-Content -LiteralPath $codexSkill -Raw -Encoding UTF8
-    if ((Get-Content -LiteralPath $codexSkill -TotalCount 1 -Encoding UTF8) -ne '---') {
-        $errors.Add('Codex skill front matter is missing')
-    }
-    if ($skillContent -match '\[TODO|TODO:') {
-        $errors.Add('Codex skill contains scaffold TODO text')
-    }
-    if ($skillContent -notmatch '(?m)^name: format-submission-manuscript$') {
-        $errors.Add('Codex skill name does not match its directory')
+$codexSkills = @(
+    @{ Path = 'codex/skills/format-submission-manuscript/SKILL.md'; Name = 'format-submission-manuscript' },
+    @{ Path = 'codex/skills/revise-originality-with-evidence/SKILL.md'; Name = 'revise-originality-with-evidence' }
+)
+foreach ($entry in $codexSkills) {
+    $codexSkill = Join-Path $root $entry.Path
+    if (Test-Path -LiteralPath $codexSkill -PathType Leaf) {
+        $skillContent = Get-Content -LiteralPath $codexSkill -Raw -Encoding UTF8
+        if ((Get-Content -LiteralPath $codexSkill -TotalCount 1 -Encoding UTF8) -ne '---') {
+            $errors.Add("Codex skill front matter is missing: $($entry.Name)")
+        }
+        if ($skillContent -match '\[TODO|TODO:') {
+            $errors.Add("Codex skill contains scaffold TODO text: $($entry.Name)")
+        }
+        if ($skillContent -notmatch "(?m)^name: $([regex]::Escape($entry.Name))$") {
+            $errors.Add("Codex skill name does not match its directory: $($entry.Name)")
+        }
     }
 }
 

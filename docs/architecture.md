@@ -7,6 +7,7 @@
 | Evidence | Zotero | Bibliographic metadata, PDFs, annotations, source-linked notes | Project planning and durable synthesis |
 | Knowledge | Obsidian | Project control, source notes, evergreen notes, research logs, outputs | Authoritative bibliographic metadata |
 | Orchestration | Codex | Retrieval, synthesis, drafting, review, cross-system operations | Long-term private data storage |
+| Originality repair | Codex originality skill + ARS | Evidence-grounded semantic revision, change ledger, integrity recheck | Vendor verdicts, score targeting, layout |
 | Formatting | Codex publication skill + Pandoc | Deterministic layout, citation rendering, QA manifests | Scientific content or bibliographic invention |
 | Compatibility | Word/WPS + LibreOffice | Field refresh, editor PDF, independent page rendering | Authoritative semantic source |
 
@@ -18,6 +19,7 @@ sequenceDiagram
   participant M as llm-for-zotero MCP
   participant C as Codex
   participant O as Obsidian Vault
+  participant R as Originality repair
   participant P as Pandoc/CSL
   participant E as Word/WPS
   participant L as LibreOffice
@@ -27,7 +29,11 @@ sequenceDiagram
   C->>Z: Search/read evidence and write child notes
   C->>O: Write source notes, claims, decisions, drafts
   O-->>C: Durable context for the next research session
-  O->>C: Release semantic manuscript
+  O->>C: Release semantic manuscript for ARS integrity check
+  C->>R: Phase D findings + exported report + Zotero evidence
+  R-->>C: Reviewed semantic copy + ledger + recheck request
+  C->>R: 100% changed-paragraph recheck + named approval
+  R-->>C: Hash-bound qa_passed manifest
   C->>P: Resolve citation keys and deterministic layout
   P-->>C: Immutable core DOCX
   C->>E: Refresh fields, save reviewed copy, export PDF
@@ -39,7 +45,17 @@ sequenceDiagram
 
 Claudian embeds Codex in the Obsidian sidebar, but the durable integration is still the Vault filesystem. No Obsidian MCP server is required.
 
-After the research manuscript clears its evidence gates, `format-submission-manuscript` adds a one-way release path: semantic Markdown to immutable core DOCX, a separate editor-reviewed copy, independent PDF renders, and explicit page-by-page QA. Switching journals always starts again from the semantic source.
+When Phase D finds a blocking originality issue,
+`revise-originality-with-evidence` creates a separate semantic review copy and
+requires verified Zotero locations, scientific-invariant checks, a full recheck,
+and named approval. It does not replace the upstream ARS detector and does not
+claim an official vendor score.
+
+After the research manuscript clears both evidence and originality gates,
+`format-submission-manuscript` adds a one-way release path: semantic Markdown to
+immutable core DOCX, a separate editor-reviewed copy, independent PDF renders,
+and explicit page-by-page QA. Switching journals always starts again from the
+approved semantic source.
 
 ## Traceability contract
 

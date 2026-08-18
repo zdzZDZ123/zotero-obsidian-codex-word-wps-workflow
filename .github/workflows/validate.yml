@@ -22,7 +22,13 @@ jobs:
           bash -n ./scripts/Audit-ObsidianEnvironment-macOS.command
           bash -n ./scripts/Install-PublicationFormatting-macOS.command
           bash -n ./scripts/Format-ResearchManuscript-macOS.command
-      - name: Install formatter test dependencies
-        run: python -m pip install -r ./codex/skills/format-submission-manuscript/requirements.txt
+          bash -n ./scripts/Install-OriginalityRevision-macOS.command
+          bash -n ./scripts/Revise-ResearchOriginality-macOS.command
+      - name: Install skill test dependencies
+        run: |
+          python -m pip install -r ./codex/skills/format-submission-manuscript/requirements.txt
+          python -m pip install -r ./codex/skills/revise-originality-with-evidence/requirements.txt
       - name: Run publication formatter tests
         run: python -m unittest discover -s ./codex/skills/format-submission-manuscript/tests -v
+      - name: Run originality revision tests
+        run: python -m unittest discover -s ./codex/skills/revise-originality-with-evidence/tests -v

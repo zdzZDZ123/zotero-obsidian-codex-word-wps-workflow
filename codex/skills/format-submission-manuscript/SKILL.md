@@ -24,6 +24,9 @@ Read [references/workflow-contract.md](references/workflow-contract.md) before f
 2. If an official or user-authorized reference DOCX/DOTX exists, retain it locally and run `distill`. Keep its SHA-256 and source URL. Do not commit copyrighted templates.
 3. Inspect `submission.yaml`. Use `template_mode: template_authoritative` when the uploaded document must control page geometry and named styles; use `profile_overlay` when a declared YAML profile should override it. Otherwise use a versioned profile whose source and validation status are explicit.
 4. Run `format`. Stop if citation evidence markers remain, a citation key is missing, a declared file is absent, or a template hash changed.
+   When the manuscript went through originality remediation, declare its
+   `originality_manifest`; formatting must refuse any state other than
+   `qa_passed`, any changed manuscript hash, or any missing named approval.
 5. Inspect every LibreOffice-rendered page and every Word/WPS PDF-rendered page at full resolution. Check clipping, overlaps, table overflow, figure scale, caption placement, font substitution, page numbers, and pagination.
 6. Run `finalize --confirm-every-page` only after the inspection passes. This is the only transition from `qa_pending_visual_inspection` to `qa_passed` and the only point at which a requested desktop copy is made.
 
@@ -51,6 +54,9 @@ On Windows, `auto` prefers genuine Word and otherwise uses `KWPS.Application`. O
 - Do not claim visual completion from structure checks alone. A failed or timed-out LibreOffice render is a failed run.
 - Do not install or bypass Microsoft Word licensing. Mark Word `not_checked` until genuine Word is present.
 - Do not commit manuscripts, Zotero libraries, PDFs, commercial fonts, application installers, or third-party journal templates.
+- Do not perform semantic rewriting in this skill. Consume only the reviewed
+  Markdown emitted by `revise-originality-with-evidence` and record its QA
+  manifest as an input.
 
 ## Natural-language routing
 

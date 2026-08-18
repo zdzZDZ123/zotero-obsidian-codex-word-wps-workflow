@@ -1,0 +1,16 @@
+schema_version: 1
+manuscript: manuscript.md
+bibliography: references.json
+evidence_manifest: evidence.json
+ars_integrity_report: integrity-report.md
+similarity_reports: []
+languages: [zh, en]
+protected:
+  terms: []
+  sections: [Results, 结果]
+output_root: originality-output
+revision_proposals: revision-proposals.json
+recheck_results: recheck-results.json
+review:
+  require_human_approval: true
+  block_severities: [CRITICAL, SERIOUS, MODERATE]

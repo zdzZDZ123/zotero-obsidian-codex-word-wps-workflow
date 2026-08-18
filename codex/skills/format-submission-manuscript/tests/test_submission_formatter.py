@@ -69,8 +69,77 @@ class FormatterUnitTests(unittest.TestCase):
             report = formatter.finalize_visual_qa(manifest_path, reviewer="Codex", confirm_every_page=True)
             self.assertEqual(report["status"], "qa_passed")
 
+    def test_originality_manifest_is_a_hash_bound_approval_gate(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pubfmt-originality-") as name:
+            root = Path(name)
+            manuscript = root / "manuscript.md"
+            manuscript.write_text("# Title\n\nReviewed semantic manuscript.\n", encoding="utf-8")
+            manifest_path = root / "originality-qa-report.json"
+            formatter.json_dump({
+                "schema_version": 1,
+                "status": "qa_passed",
+                "manuscript_sha256": formatter.sha256_file(manuscript),
+                "approval": {"explicit": True, "reviewer": "Author"},
+            }, manifest_path)
+            gate = formatter.validate_originality_gate(manifest_path, manuscript)
+            self.assertEqual(gate["status"], "qa_passed")
+            pending = json.loads(manifest_path.read_text(encoding="utf-8"))
+            pending["status"] = "qa_pending_human_approval"
+            formatter.json_dump(pending, manifest_path)
+            with self.assertRaisesRegex(formatter.FormatterError, "has not passed"):
+                formatter.validate_originality_gate(manifest_path, manuscript)
+            pending["status"] = "qa_passed"
+            formatter.json_dump(pending, manifest_path)
+            manuscript.write_text("# Title\n\nChanged after approval.\n", encoding="utf-8")
+            with self.assertRaisesRegex(formatter.FormatterError, "does not match"):
+                formatter.validate_originality_gate(manifest_path, manuscript)
+
+    def test_originality_review_marker_requires_manifest(self) -> None:
+        marker = "<!-- originality-review: manifest-required -->\n\n# Title\n"
+        with self.assertRaisesRegex(formatter.FormatterError, "requires originality_manifest"):
+            formatter.require_originality_manifest(marker, None)
+        formatter.require_originality_manifest(marker, {"status": "qa_passed"})
+
 
 class FormatterEndToEndTests(unittest.TestCase):
+    def test_approved_originality_copy_reaches_wps_backend(self) -> None:
+        environment = formatter.detect_environment()
+        if not environment["editors"]["wps"]["available"]:
+            self.skipTest("WPS is required for the originality-to-editor acceptance test")
+        if not all(environment[name]["available"] for name in ("pandoc", "libreoffice", "pdftoppm")):
+            self.skipTest("Pandoc, LibreOffice, and pdftoppm are required for the WPS acceptance test")
+        with tempfile.TemporaryDirectory(prefix="pubfmt-originality-wps-") as name:
+            project = Path(name)
+            (project / "profiles").mkdir()
+            shutil.copy2(
+                SKILL_ROOT / "assets" / "profiles" / "generic-double-blind.yaml",
+                project / "profiles" / "generic.yaml",
+            )
+            manuscript = project / "manuscript-originality-reviewed.md"
+            manuscript.write_text(
+                "---\ntitle: Synthetic approved revision\n---\n\n# Results\n\n"
+                "This synthetic paragraph passed evidence and originality review.\n",
+                encoding="utf-8",
+            )
+            formatter.json_dump({
+                "schema_version": 1,
+                "status": "qa_passed",
+                "manuscript_sha256": formatter.sha256_file(manuscript),
+                "approval": {"explicit": True, "reviewer": "Synthetic author"},
+            }, project / "originality-qa-report.json")
+            (project / "submission.yaml").write_text(
+                "schema_version: 1\nmanuscript: manuscript-originality-reviewed.md\n"
+                "originality_manifest: originality-qa-report.json\n"
+                "journal_profile: profiles/generic.yaml\neditor: wps\nvariants: [anonymized]\n"
+                "outputs: [docx, pdf]\noutput_root: submission-output\n",
+                encoding="utf-8",
+            )
+            result = formatter.format_submission(project / "submission.yaml", editor_override="wps")
+            manifest = json.loads(Path(result["manifest"]).read_text(encoding="utf-8"))
+            self.assertEqual(manifest["inputs"]["originality_manifest"]["status"], "qa_passed")
+            self.assertEqual(manifest["variants"]["anonymized"]["editor"]["status"], "passed")
+            self.assertEqual(manifest["variants"]["anonymized"]["editor_render"]["status"], "passed")
+
     def test_uploaded_template_is_authoritative_and_privacy_sanitized(self) -> None:
         environment = formatter.detect_environment()
         if not all(environment[name]["available"] for name in ("pandoc", "libreoffice", "pdftoppm")):

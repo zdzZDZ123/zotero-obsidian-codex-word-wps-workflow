@@ -26,6 +26,7 @@ open_after: false
 desktop_copy: false
 blind_terms: [Author Name, University Name]
 supplementary: [assets/supplementary-table.docx]
+originality_manifest: originality-output/originality-qa-report.json
 ```
 
 Declare both `template` and `template_contract`, or neither. Run `distill` before first use and after every template change. The formatter fails closed when the retained template SHA-256 no longer matches.
@@ -46,3 +47,9 @@ An official profile records the official source URL, retrieval date, and any loc
 - `not_checked`: the backend is unavailable, unsupported, or not genuinely installed. This is never equivalent to passed.
 
 Compare source semantics and DOCX structure across journal profiles. Heading, table, figure, and citation identities must stay constant. Direct formatting should be minimized; profile-level styles remain authoritative.
+
+`originality_manifest` is optional for manuscripts that did not enter the
+originality-remediation loop. Once declared, it is a hard content-integrity
+gate: its state must be `qa_passed`, its manuscript SHA-256 must equal the
+configured Markdown, and it must contain explicit named approval. The formatter
+records the manifest as provenance but never edits the scientific text.

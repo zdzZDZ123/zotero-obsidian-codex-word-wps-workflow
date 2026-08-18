@@ -1,0 +1,13 @@
+{
+  "vendor": "generic",
+  "matches": [
+    {
+      "matched_excerpt": "Sleep quality improved after the nursing intervention.",
+      "matched_source": "Example source",
+      "score": 12,
+      "classification": "CLOSE_MATCH",
+      "severity": "SERIOUS",
+      "citation_key": "smith2024"
+    }
+  ]
+}

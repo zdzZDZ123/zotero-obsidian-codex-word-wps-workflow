@@ -46,3 +46,14 @@ The global research capability comes from `academic-research-suite` in [`Imbad02
 | Microsoft Word | not installed | Auto-enabled only when `Word.Application` resolves to `WINWORD.EXE` |
 
 See [`publication-formatting.md`](publication-formatting.md). WPS, Word, LibreOffice, Pandoc, fonts, and journal templates are never redistributed by this repository.
+
+## Originality revision
+
+| Component | Baseline | Function |
+|---|---:|---|
+| `revise-originality-with-evidence` | 1.0.0 | Local report normalization, Zotero-grounded revision ledger, invariant and approval gates |
+| PyYAML | 6.x | Strict project contract parsing |
+| pypdf | 5.x–6.x | Local text extraction from user-exported PDF reports |
+
+The skill does not connect to commercial similarity APIs. See
+[`originality-revision.md`](originality-revision.md).

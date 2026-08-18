@@ -16,7 +16,14 @@ No third-party application or plugin binary is redistributed by this repository.
 - [LibreOffice](https://www.libreoffice.org/)
 - [WPS Office](https://www.wps.com/)
 - [Microsoft Word](https://www.microsoft.com/microsoft-365/word)
+- [PyYAML](https://pyyaml.org/)
+- [pypdf](https://pypdf.readthedocs.io/)
 
 Journal CSL files and publisher DOCX/DOTX templates remain subject to their source terms and are intentionally not redistributed. Commercial fonts and office application installers are also excluded.
+
+CNKI, Turnitin, and iThenticate are named only as formats from which an
+authorized user may export a report. This repository does not redistribute
+their software, connect to their accounts, or imply endorsement or official
+verification.
 
 Names and links are provided for identification and installation. Each project remains subject to its own license, terms, privacy policy, and release integrity. Check those terms before installation or redistribution.

@@ -12,6 +12,13 @@ Install `academic-research-suite` from the pinned source/tag in `docs/component-
 
 Install the repository's lightweight `format-submission-manuscript` skill after the academic suite. It owns only the Phase 7 publication adapter: semantic Markdown, Better BibTeX/CSL, deterministic DOCX, Word/WPS compatibility copies, and page-level QA. It must not duplicate or rewrite the upstream research phases.
 
+Install `revise-originality-with-evidence` as the narrow remediation bridge
+between ARS Stage 2.5/4.5 and the publication adapter. ARS owns detection;
+Zotero owns the supporting evidence; the new skill imports authorized exported
+reports locally, creates a separate evidence-grounded Markdown revision and
+ledger, protects scientific invariants, and requires full recheck plus named
+approval. It must never optimize for a vendor score or perform Word/WPS layout.
+
 Do not silently replace the requested research suite with an unrelated repository. If the pinned tag cannot be installed, report the access or compatibility problem and use the smallest verified fallback.
 
 ## Runtime defaults
@@ -35,3 +42,8 @@ Configuration presence is not enough. Complete a real trace:
 4. create a marked Zotero test child note;
 5. read the child note back;
 6. report every version deviation without exposing secrets.
+
+For the originality layer, additionally prove that a sanitized match can be
+mapped to a paragraph, a verified Zotero locator is required, a changed number
+is refused, every revised paragraph is rechecked, and the resulting
+`qa_passed` hash is accepted by the publication formatter.
