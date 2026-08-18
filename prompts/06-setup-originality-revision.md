@@ -16,5 +16,9 @@ Requirements:
    Codex restarts.
 5. Do not configure commercial similarity accounts or APIs, upload a manuscript,
    scrape a report portal, or weaken the evidence and human-approval gates.
-6. Report actual versions, commands, outputs, and any deviation. Do not claim
+6. Keep the starter's `<= 10%` release policy enabled. Explain that it reads an
+   explicitly labelled whole-document score from a hash-attested post-revision
+   user export, blocks Word/WPS above the threshold, and is not a guarantee or
+   detector-evasion target.
+7. Report actual versions, commands, outputs, and any deviation. Do not claim
    installation complete if the self-test fails.

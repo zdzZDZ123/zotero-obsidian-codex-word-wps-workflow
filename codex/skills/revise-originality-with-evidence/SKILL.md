@@ -2,7 +2,7 @@
 name: revise-originality-with-evidence
 description: Repair CLOSE_MATCH, VERBATIM, and self-reuse findings in Chinese or English academic manuscripts by tracing every revision to Zotero evidence, preserving scientific invariants, and producing a reviewable semantic Markdown copy. Use after ARS originality screening or when importing an authorized CNKI, Turnitin, or iThenticate report; do not use to evade detection or target a similarity score.
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Revise Originality with Evidence
@@ -45,9 +45,12 @@ when a vendor report fails to import. Use
    evidence.
 5. Re-run ARS Phase D plus citation, data, and fact checks on **100% of changed
    paragraphs**. Record the results in `recheck-results.json`.
-6. Run `verify`. Only an explicit `--approve --reviewer NAME` after successful
-   rechecks can emit `qa_passed`. Pass that manifest to the publication
-   formatter through `originality_manifest`.
+6. When the project config enables a release policy, export a post-revision
+   report from an accepted vendor, bind its SHA-256 and the exact revised
+   manuscript hash in `similarity-release-attestation.json`, and run `verify`.
+   Only successful rechecks, a passing release policy, and an explicit
+   `--approve --reviewer NAME` can emit `qa_passed`. Pass that manifest to the
+   publication formatter through `originality_manifest`.
 
 ## Commands
 
@@ -56,6 +59,7 @@ originality_revision.py doctor --self-test
 originality_revision.py import-report --input report.pdf --vendor auto --output normalized.json
 originality_revision.py analyze --config originality.yaml
 originality_revision.py revise --config originality.yaml
+originality_revision.py attest-release --config originality.yaml --report reports/post-revision.pdf --vendor turnitin --reviewer "Author"
 originality_revision.py verify --config originality.yaml
 originality_revision.py verify --config originality.yaml --approve --reviewer "Author review"
 ```
@@ -65,6 +69,9 @@ Repository wrappers provide the same commands on Windows and macOS.
 ## Non-negotiable gates
 
 - Do not optimize for, promise, or estimate a target similarity percentage.
+- A configured percentage may be used only as a fail-closed publication policy
+  over an attested user-exported report. It is not a score prediction or a
+  direction to keep rewriting legitimate standard language.
 - Do not use synonym substitution, translation, zero-width characters,
   homoglyphs, hidden text, image conversion, or other detector-evasion tactics.
 - Preserve claims, conclusion direction, statistics, sample sizes, units,

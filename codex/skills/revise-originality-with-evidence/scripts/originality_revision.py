@@ -99,6 +99,7 @@ def load_config(config_path: Path) -> tuple[dict[str, Any], Path]:
         "schema_version", "manuscript", "bibliography", "evidence_manifest",
         "ars_integrity_report", "similarity_reports", "languages", "protected",
         "output_root", "revision_proposals", "recheck_results", "review",
+        "release_policy",
     }
     strict_keys(value, allowed, "originality config")
     for key in ("schema_version", "manuscript", "bibliography", "evidence_manifest"):
@@ -127,6 +128,28 @@ def load_config(config_path: Path) -> tuple[dict[str, Any], Path]:
     severities = review.get("block_severities", sorted(DEFAULT_BLOCK_SEVERITIES))
     if not isinstance(severities, list) or any(item not in SEVERITIES for item in severities):
         raise OriginalityError("review.block_severities contains an unsupported value")
+    release_policy = value.get("release_policy")
+    if release_policy is not None:
+        if not isinstance(release_policy, dict):
+            raise OriginalityError("release_policy must be a mapping")
+        strict_keys(
+            release_policy,
+            {"enabled", "max_overall_similarity_percent", "require_vendor_recheck", "accepted_vendors", "attestation"},
+            "release_policy",
+        )
+        if not isinstance(release_policy.get("enabled", True), bool):
+            raise OriginalityError("release_policy.enabled must be true or false")
+        maximum = release_policy.get("max_overall_similarity_percent", 10)
+        if not isinstance(maximum, (int, float)) or isinstance(maximum, bool) or not 0 <= float(maximum) <= 100:
+            raise OriginalityError("release_policy.max_overall_similarity_percent must be between 0 and 100")
+        if not isinstance(release_policy.get("require_vendor_recheck", True), bool):
+            raise OriginalityError("release_policy.require_vendor_recheck must be true or false")
+        vendors = release_policy.get("accepted_vendors", ["cnki", "turnitin", "ithenticate"])
+        if not isinstance(vendors, list) or not vendors or any(item not in {"cnki", "turnitin", "ithenticate"} for item in vendors):
+            raise OriginalityError("release_policy.accepted_vendors must contain cnki, turnitin, and/or ithenticate")
+        if release_policy.get("enabled", True) and release_policy.get("require_vendor_recheck", True):
+            if not str(release_policy.get("attestation", "")).strip():
+                raise OriginalityError("release_policy.attestation is required when the vendor recheck gate is enabled")
     return value, config_path.parent
 
 
@@ -253,6 +276,53 @@ def parse_score(value: Any) -> float | None:
         return None
     match = re.search(r"\d+(?:\.\d+)?", str(value))
     return float(match.group(0)) if match else None
+
+
+OVERALL_SIMILARITY_PATTERNS = (
+    re.compile(r"总文字复制比\s*[:：]?\s*(\d{1,3}(?:\.\d+)?)\s*%", flags=re.I),
+    re.compile(r"总体相似度\s*[:：]?\s*(\d{1,3}(?:\.\d+)?)\s*%", flags=re.I),
+    re.compile(r"overall\s+similarity(?:\s+(?:score|index))?\s*[:：]?\s*(\d{1,3}(?:\.\d+)?)\s*%", flags=re.I),
+    re.compile(r"similarity\s+index\s*[:：]?\s*(\d{1,3}(?:\.\d+)?)\s*%", flags=re.I),
+)
+
+
+def extract_overall_similarity(text: str) -> float | None:
+    """Extract an explicitly labelled whole-document score, never a match score."""
+    found: set[float] = set()
+    for pattern in OVERALL_SIMILARITY_PATTERNS:
+        for match in pattern.finditer(text):
+            value = float(match.group(1))
+            if not 0 <= value <= 100:
+                raise OriginalityError(f"Overall similarity percentage is outside 0-100: {value}")
+            found.add(value)
+    if len(found) > 1:
+        raise OriginalityError(f"Report contains ambiguous overall similarity values: {sorted(found)}")
+    return next(iter(found)) if found else None
+
+
+def report_summary(path: Path, requested_vendor: str = "auto") -> dict[str, Any]:
+    suffix = path.suffix.lower()
+    if suffix == ".json":
+        raw_text = path.read_text(encoding="utf-8", errors="replace")
+        try:
+            payload = json.loads(raw_text)
+        except json.JSONDecodeError as exc:
+            raise OriginalityError(f"Cannot read JSON similarity report: {exc}") from exc
+        vendor = detect_vendor(str(payload.get("vendor", "")) if isinstance(payload, dict) else raw_text, requested_vendor)
+        explicit = payload.get("overall_similarity_percent") if isinstance(payload, dict) else None
+        overall = parse_score(explicit) if explicit is not None else extract_overall_similarity(raw_text)
+    else:
+        raw_text = path.read_text(encoding="utf-8-sig", errors="replace") if suffix == ".csv" else read_text_report(path)
+        vendor = detect_vendor(raw_text, requested_vendor)
+        overall = extract_overall_similarity(raw_text)
+    if overall is not None and not 0 <= overall <= 100:
+        raise OriginalityError(f"Overall similarity percentage is outside 0-100: {overall}")
+    return {
+        "vendor": vendor,
+        "source_report": path.name,
+        "source_sha256": sha256_file(path),
+        "overall_similarity_percent": overall,
+    }
 
 
 def stable_match_id(vendor: str, record: dict[str, Any]) -> str:
@@ -382,11 +452,13 @@ def import_report_data(path: Path, requested_vendor: str = "auto") -> dict[str, 
         )
     for record in records:
         record["source_report"] = path.name
+    summary = report_summary(path, requested_vendor)
     return {
         "schema_version": SCHEMA_VERSION,
         "vendor": vendor,
         "source_report": path.name,
         "source_sha256": sha256_file(path),
+        "overall_similarity_percent": summary["overall_similarity_percent"],
         "matches": records,
         "limitations": [
             "Imported locally from user-exported material",
@@ -560,6 +632,167 @@ def config_paths(config: dict[str, Any], base: Path) -> dict[str, Path | None]:
         "proposals": resolve_inside(base, config.get("revision_proposals", "revision-proposals.json"), "revision_proposals", required=False),
         "recheck": resolve_inside(base, config.get("recheck_results", "recheck-results.json"), "recheck_results", required=False),
         "output": resolve_inside(base, config.get("output_root", "originality-output"), "output_root", required=False),
+    }
+
+
+def evaluate_release_policy(config: dict[str, Any], base: Path, revised_path: Path) -> dict[str, Any]:
+    policy = config.get("release_policy")
+    if not isinstance(policy, dict) or not policy.get("enabled", True):
+        return {"status": "not_configured", "enforced": False, "failures": [], "reports": []}
+
+    maximum = float(policy.get("max_overall_similarity_percent", 10))
+    require_recheck = policy.get("require_vendor_recheck", True)
+    accepted = set(policy.get("accepted_vendors", ["cnki", "turnitin", "ithenticate"]))
+    result: dict[str, Any] = {
+        "status": "failed",
+        "enforced": True,
+        "rule": "all_attested_vendor_scores_lte_maximum",
+        "max_overall_similarity_percent": maximum,
+        "require_vendor_recheck": require_recheck,
+        "accepted_vendors": sorted(accepted),
+        "reports": [],
+        "failures": [],
+        "limitations": [
+            "Scores are read from user-exported reports and are not generated by this workflow",
+            "Passing this policy does not prove originality or guarantee a future vendor score",
+        ],
+    }
+    if not require_recheck:
+        result["status"] = "passed"
+        return result
+
+    attestation_path = resolve_inside(base, policy.get("attestation"), "release_policy.attestation", required=True)
+    assert attestation_path
+    attestation = load_json_object(attestation_path, "similarity release attestation")
+    strict_keys(attestation, {"schema_version", "manuscript_sha256", "reviewer", "checked_at", "reports"}, "similarity release attestation")
+    if attestation.get("schema_version") != SCHEMA_VERSION:
+        result["failures"].append("similarity release attestation must use schema_version 1")
+    if attestation.get("manuscript_sha256") != sha256_file(revised_path):
+        result["failures"].append("similarity release attestation does not match the revised manuscript hash")
+    if not str(attestation.get("reviewer", "")).strip():
+        result["failures"].append("similarity release attestation reviewer is missing")
+    if not str(attestation.get("checked_at", "")).strip():
+        result["failures"].append("similarity release attestation timestamp is missing")
+    reports = attestation.get("reports")
+    if not isinstance(reports, list) or not reports:
+        result["failures"].append("similarity release attestation must contain at least one report")
+        reports = []
+    for index, item in enumerate(reports):
+        if not isinstance(item, dict):
+            result["failures"].append(f"attested report {index} must be an object")
+            continue
+        try:
+            strict_keys(item, {"path", "sha256", "vendor"}, f"attested report {index}")
+            report_path = resolve_inside(base, item.get("path"), f"attested report {index}.path", required=True)
+            assert report_path
+            actual_hash = sha256_file(report_path)
+            if item.get("sha256") != actual_hash:
+                result["failures"].append(f"attested report hash mismatch: {report_path.name}")
+                continue
+            requested_vendor = str(item.get("vendor", "auto")).strip().lower() or "auto"
+            if requested_vendor not in accepted:
+                result["failures"].append(f"attested report vendor is not accepted: {requested_vendor}")
+                continue
+            summary = report_summary(report_path, requested_vendor)
+            if summary["vendor"] not in accepted:
+                result["failures"].append(f"detected report vendor is not accepted: {summary['vendor']}")
+                continue
+            score = summary["overall_similarity_percent"]
+            result["reports"].append({
+                "path": str(item.get("path")),
+                "sha256": actual_hash,
+                "vendor": summary["vendor"],
+                "overall_similarity_percent": score,
+                "within_policy": score is not None and score <= maximum,
+            })
+            if score is None:
+                result["failures"].append(f"no explicit whole-document similarity score found: {report_path.name}")
+            elif score > maximum:
+                result["failures"].append(
+                    f"attested vendor recheck score {score:g}% exceeds the configured maximum {maximum:g}%: {report_path.name}"
+                )
+        except OriginalityError as exc:
+            result["failures"].append(str(exc))
+    if not result["failures"]:
+        result["status"] = "passed"
+    result["attestation"] = {
+        "path": str(policy.get("attestation")),
+        "sha256": sha256_file(attestation_path),
+        "reviewer": attestation.get("reviewer"),
+        "checked_at": attestation.get("checked_at"),
+    }
+    return result
+
+
+def attest_release(config_path: Path, report_value: Path, vendor: str, reviewer: str) -> dict[str, Any]:
+    config, base = load_config(config_path)
+    policy = config.get("release_policy")
+    if not isinstance(policy, dict) or not policy.get("enabled", True):
+        raise OriginalityError("release_policy is not enabled in originality.yaml")
+    if not reviewer.strip():
+        raise OriginalityError("--reviewer must be non-empty")
+    accepted = set(policy.get("accepted_vendors", ["cnki", "turnitin", "ithenticate"]))
+    if vendor not in accepted:
+        raise OriginalityError(f"Vendor is not accepted by release_policy: {vendor}")
+    output = resolve_inside(base, config.get("output_root", "originality-output"), "output_root", required=False)
+    assert output
+    revised_path = output / "manuscript-originality-reviewed.md"
+    manifest_path = output / "revision-manifest.json"
+    if not revised_path.is_file() or not manifest_path.is_file():
+        raise OriginalityError("Revision artifacts are missing; run revise before attesting a post-revision report")
+    manifest = load_json_object(manifest_path, "revision manifest")
+    if manifest.get("revised_manuscript_sha256") != sha256_file(revised_path):
+        raise OriginalityError("Revised manuscript changed after the deterministic revision step")
+    report_path = report_value.resolve() if report_value.is_absolute() else (base / report_value).resolve()
+    if report_path != base and base not in report_path.parents:
+        raise OriginalityError(f"release report escapes the manuscript project: {report_value}")
+    if not report_path.is_file():
+        raise OriginalityError(f"Release report is missing: {report_value}")
+    summary = report_summary(report_path, vendor)
+    score = summary["overall_similarity_percent"]
+    if score is None:
+        raise OriginalityError("Release report has no explicit whole-document similarity score")
+    attestation_path = resolve_inside(base, policy.get("attestation"), "release_policy.attestation", required=False)
+    assert attestation_path
+    relative_report = report_path.relative_to(base).as_posix()
+    report_item = {"path": relative_report, "sha256": sha256_file(report_path), "vendor": vendor}
+    existing: dict[str, Any] = {}
+    if attestation_path.is_file():
+        existing = load_json_object(attestation_path, "similarity release attestation")
+    existing_reports = existing.get("reports", []) if isinstance(existing.get("reports", []), list) else []
+    report_index = {
+        str(item.get("path")): item
+        for item in existing_reports
+        if isinstance(item, dict) and str(item.get("path", "")).strip()
+    }
+    report_index[relative_report] = report_item
+    manuscript_hash = sha256_file(revised_path)
+    stable_existing = (
+        existing.get("manuscript_sha256") == manuscript_hash
+        and existing.get("reviewer") == reviewer.strip()
+        and report_index == {
+            str(item.get("path")): item
+            for item in existing_reports
+            if isinstance(item, dict) and str(item.get("path", "")).strip()
+        }
+    )
+    attestation = {
+        "schema_version": SCHEMA_VERSION,
+        "manuscript_sha256": manuscript_hash,
+        "reviewer": reviewer.strip(),
+        "checked_at": existing.get("checked_at") if stable_existing and existing.get("checked_at") else utc_now(),
+        "reports": [report_index[key] for key in sorted(report_index)],
+    }
+    json_dump(attestation, attestation_path)
+    maximum = float(policy.get("max_overall_similarity_percent", 10))
+    return {
+        "status": "attested",
+        "attestation": str(attestation_path),
+        "report": relative_report,
+        "vendor": vendor,
+        "overall_similarity_percent": score,
+        "max_overall_similarity_percent": maximum,
+        "within_policy": score <= maximum,
     }
 
 
@@ -1027,6 +1260,9 @@ def verify(config_path: Path, *, approve: bool = False, reviewer: str | None = N
         elif issue:
             failures.append(f"unresolved issue: {issue}")
 
+    release_policy = evaluate_release_policy(config, base, revised_path)
+    failures.extend(f"release policy: {item}" for item in release_policy.get("failures", []))
+
     status = "qa_failed" if failures else "qa_pending_human_approval"
     approval: dict[str, Any] | None = None
     if approve:
@@ -1047,6 +1283,7 @@ def verify(config_path: Path, *, approve: bool = False, reviewer: str | None = N
             "ars_recheck": "failed" if failures else "passed",
             "rechecked_paragraphs": len(manifest.get("reviewed_paragraphs", [])),
             "human_approval": "passed" if approval else "pending",
+            "release_similarity_policy": release_policy["status"],
         },
         "recheck_attestation": {
             "reviewer": recheck.get("reviewer"),
@@ -1055,15 +1292,17 @@ def verify(config_path: Path, *, approve: bool = False, reviewer: str | None = N
         },
         "failures": failures,
         "approval": approval,
+        "release_policy": release_policy,
         "limitations": [
             "This is not an official CNKI, Turnitin, or iThenticate verdict",
-            "No target similarity percentage is promised or optimized",
+            "The configured percentage is a release gate over an attested vendor report, not a promised or optimized score",
         ],
     }
     json_dump(qa, output / "originality-qa-report.json")
     manifest["status"] = status
     manifest["qa_report"] = "originality-qa-report.json"
     manifest["approval"] = approval
+    manifest["release_policy"] = release_policy
     json_dump(manifest, manifest_path)
     return qa
 
@@ -1109,6 +1348,11 @@ def build_parser() -> argparse.ArgumentParser:
     analyze_cmd.add_argument("--config", required=True, type=Path)
     revise_cmd = sub.add_parser("revise", help="Apply evidence-grounded proposals to a review copy")
     revise_cmd.add_argument("--config", required=True, type=Path)
+    attest_cmd = sub.add_parser("attest-release", help="Bind a post-revision vendor report to the revised manuscript")
+    attest_cmd.add_argument("--config", required=True, type=Path)
+    attest_cmd.add_argument("--report", required=True, type=Path)
+    attest_cmd.add_argument("--vendor", required=True, choices=["cnki", "turnitin", "ithenticate"])
+    attest_cmd.add_argument("--reviewer", required=True)
     verify_cmd = sub.add_parser("verify", help="Verify ARS rechecks and explicit human approval")
     verify_cmd.add_argument("--config", required=True, type=Path)
     verify_cmd.add_argument("--approve", action="store_true")
@@ -1142,7 +1386,12 @@ def main(argv: list[str] | None = None) -> int:
                 raise OriginalityError(f"Report file is missing: {input_path}")
             result = import_report_data(input_path, args.vendor)
             json_dump(result, args.output.resolve())
-            print(json.dumps({"output": str(args.output.resolve()), "vendor": result["vendor"], "matches": len(result["matches"])}, ensure_ascii=False))
+            print(json.dumps({
+                "output": str(args.output.resolve()),
+                "vendor": result["vendor"],
+                "matches": len(result["matches"]),
+                "overall_similarity_percent": result["overall_similarity_percent"],
+            }, ensure_ascii=False))
             return 0
         if args.command == "analyze":
             result = analyze(args.config)
@@ -1152,6 +1401,10 @@ def main(argv: list[str] | None = None) -> int:
             result = revise(args.config)
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
+        if args.command == "attest-release":
+            result = attest_release(args.config, args.report, args.vendor, args.reviewer)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0 if result["within_policy"] else 4
         if args.command == "verify":
             result = verify(args.config, approve=args.approve, reviewer=args.reviewer)
             print(json.dumps(result, ensure_ascii=False, indent=2))

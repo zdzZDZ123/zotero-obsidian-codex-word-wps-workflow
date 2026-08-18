@@ -1,5 +1,5 @@
 {
-  "snapshotDate": "2026-08-18",
+  "snapshotDate": "2026-08-19",
   "policy": "Prefer pinned versions; if unavailable, install the latest compatible official release and report the deviation plus runtime validation.",
   "applications": {
     "obsidian": "1.12.7",
@@ -38,7 +38,12 @@
     "publicationFormattingSkill": "format-submission-manuscript",
     "publicationFormattingSkillVersion": "1.0.0",
     "originalityRevisionSkill": "revise-originality-with-evidence",
-    "originalityRevisionSkillVersion": "1.0.0",
+    "originalityRevisionSkillVersion": "1.1.0",
+    "originalityReleasePolicyDefault": {
+      "maxOverallSimilarityPercent": 10,
+      "requireVendorRecheck": true,
+      "acceptedVendors": ["cnki", "turnitin", "ithenticate"]
+    },
     "originalityReportAdapters": ["cnki", "turnitin", "ithenticate", "generic-json", "generic-csv"],
     "originalityProcessing": "local-only",
     "originalityRevisionRuntime": {

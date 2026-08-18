@@ -1,4 +1,4 @@
 interface:
   display_name: "Evidence-grounded originality revision"
-  short_description: "Repair similarity findings without changing evidence"
-  default_prompt: "Use $revise-originality-with-evidence to create a traceable originality-revision copy of my manuscript from Zotero evidence and my exported similarity report."
+  short_description: "Repair findings and enforce an attested release policy"
+  default_prompt: "Use $revise-originality-with-evidence to create a traceable originality-revision copy from Zotero evidence, then enforce my configured release policy against a hash-attested post-revision vendor report."

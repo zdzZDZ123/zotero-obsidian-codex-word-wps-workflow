@@ -78,6 +78,44 @@ the generated proposal template, and keep unsupported or ambiguous claims
 blocked. Before approval, ARS Phase D plus citation, data, and fact checks must
 cover every paragraph listed in `recheck-request.json`.
 
+## Optional 10% release policy
+
+The project starter enables a fail-closed publication policy by default:
+
+```yaml
+release_policy:
+  enabled: true
+  max_overall_similarity_percent: 10
+  require_vendor_recheck: true
+  accepted_vendors: [cnki, turnitin, ithenticate]
+  attestation: similarity-release-attestation.json
+```
+
+After revising the manuscript, the author exports a new report from an
+accepted vendor and completes the attestation with the exact revised manuscript
+SHA-256, report SHA-256, reviewer, and timestamp. `verify` reads only an
+explicit whole-document label such as `Overall Similarity` or `总文字复制比`.
+Individual source-match percentages never satisfy or trigger this policy.
+
+Every attested score must be at or below `10` before `qa_passed` can be issued;
+otherwise Word/WPS formatting remains blocked. This threshold is a local
+release rule over user-supplied evidence. It does not guarantee that every
+paper, vendor, database snapshot, or future check will return the same score,
+and it never authorizes detector-evasion edits.
+
+The wrapper creates the hash-bound attestation without manual checksum work:
+
+```powershell
+.\scripts\Revise-ResearchOriginality.ps1 attest-release `
+  --config .\originality.yaml `
+  --report .\reports\post-revision.pdf `
+  --vendor turnitin `
+  --reviewer "Author review"
+```
+
+The command returns exit code `4` when it successfully records a report whose
+score is above policy; subsequent `verify` remains `qa_failed`.
+
 ## Report import
 
 The importer accepts extractable PDF/HTML exports and deterministic generic
@@ -100,7 +138,8 @@ intervention names, statistical methods, and reporting guidelines under
 
 - `qa_pending_recheck`: review copy exists; ARS recheck is incomplete.
 - `qa_pending_human_approval`: all checks passed; named approval is missing.
-- `qa_failed`: a blocking issue or invariant failure remains.
+- `qa_failed`: a blocking issue, invariant failure, or configured release-policy
+  failure remains.
 - `qa_passed`: every required check passed and a named reviewer explicitly
   approved the exact manuscript hash.
 

@@ -56,6 +56,14 @@ class ReportImportTests(unittest.TestCase):
             with self.assertRaises(revision.OriginalityError):
                 revision.import_report_data(path)
 
+    def test_only_explicit_whole_document_score_is_extracted(self) -> None:
+        self.assertIsNone(revision.import_report_data(FIXTURES / "cnki-extracted.html")["overall_similarity_percent"])
+        text = "Turnitin Similarity Report\nOverall Similarity: 9.8%\nMatch 1\nMatched text: Example overlap.\nSource: Source\n"
+        with tempfile.TemporaryDirectory() as temp_name:
+            path = Path(temp_name) / "turnitin.txt"
+            path.write_text(text, encoding="utf-8")
+            self.assertEqual(revision.import_report_data(path)["overall_similarity_percent"], 9.8)
+
 
 class ParagraphMappingTests(unittest.TestCase):
     def test_chinese_and_english_mapping(self) -> None:
@@ -87,7 +95,14 @@ class ParagraphMappingTests(unittest.TestCase):
 
 
 class EndToEndTests(unittest.TestCase):
-    def make_project(self, root: Path, *, changed_number: bool = False, verified: bool = True) -> tuple[Path, str]:
+    def make_project(
+        self,
+        root: Path,
+        *,
+        changed_number: bool = False,
+        verified: bool = True,
+        release_policy: bool = False,
+    ) -> tuple[Path, str]:
         manuscript = (
             "# Nursing intervention study\n\n"
             "The intervention reduced stress by 15% among 120 participants [@smith2024].\n\n"
@@ -122,6 +137,15 @@ class EndToEndTests(unittest.TestCase):
             "revision_proposals: revision-proposals.json\n"
             "recheck_results: recheck-results.json\n"
             "review:\n  require_human_approval: true\n  block_severities: [CRITICAL, SERIOUS, MODERATE]\n"
+            + (
+                "release_policy:\n"
+                "  enabled: true\n"
+                "  max_overall_similarity_percent: 10\n"
+                "  require_vendor_recheck: true\n"
+                "  accepted_vendors: [cnki, turnitin, ithenticate]\n"
+                "  attestation: similarity-release-attestation.json\n"
+                if release_policy else ""
+            )
         )
         config_path = root / "originality.yaml"
         config_path.write_text(config, encoding="utf-8")
@@ -151,6 +175,44 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(analysis["blocking_matches"], 1)
         return config_path, manuscript
 
+    def write_rechecks(self, root: Path) -> None:
+        request = json.loads((root / "originality-output" / "recheck-request.json").read_text(encoding="utf-8"))
+        rechecks = []
+        for item in request["paragraphs"]:
+            rechecks.append({
+                "paragraph_id": item["paragraph_id"],
+                "revised_sha256": item["revised_sha256"],
+                "phase_d": "PASS", "citation": "PASS", "data": "PASS", "facts": "PASS",
+            })
+        (root / "recheck-results.json").write_text(json.dumps({
+            "schema_version": 1,
+            "reviewer": "ARS integrity verification",
+            "checked_at": "2026-08-19T00:00:00+00:00",
+            "integrity_stage": "4.5",
+            "paragraphs": rechecks,
+            "unresolved_issues": [],
+        }), encoding="utf-8")
+
+    def write_similarity_attestation(self, root: Path, score: float) -> None:
+        report = root / "turnitin-recheck.txt"
+        report.write_text(
+            f"Turnitin Similarity Report\nOverall Similarity: {score}%\n",
+            encoding="utf-8",
+        )
+        revised = root / "originality-output" / "manuscript-originality-reviewed.md"
+        attestation = {
+            "schema_version": 1,
+            "manuscript_sha256": revision.sha256_file(revised),
+            "reviewer": "Author",
+            "checked_at": "2026-08-19T01:00:00+00:00",
+            "reports": [{
+                "path": "turnitin-recheck.txt",
+                "sha256": revision.sha256_file(report),
+                "vendor": "turnitin",
+            }],
+        }
+        (root / "similarity-release-attestation.json").write_text(json.dumps(attestation), encoding="utf-8")
+
     def test_full_revision_recheck_approval_and_idempotence(self) -> None:
         with tempfile.TemporaryDirectory() as temp_name:
             root = Path(temp_name)
@@ -164,27 +226,50 @@ class EndToEndTests(unittest.TestCase):
             self.assertEqual(revised_once, Path(result["manuscript"]).read_bytes())
             self.assertEqual(original, (root / "manuscript.md").read_text(encoding="utf-8"))
 
-            request = json.loads((root / "originality-output" / "recheck-request.json").read_text(encoding="utf-8"))
-            rechecks = []
-            for item in request["paragraphs"]:
-                rechecks.append({
-                    "paragraph_id": item["paragraph_id"],
-                    "revised_sha256": item["revised_sha256"],
-                    "phase_d": "PASS", "citation": "PASS", "data": "PASS", "facts": "PASS",
-                })
-            (root / "recheck-results.json").write_text(json.dumps({
-                "schema_version": 1,
-                "reviewer": "ARS integrity verification",
-                "checked_at": "2026-08-19T00:00:00+00:00",
-                "integrity_stage": "4.5",
-                "paragraphs": rechecks,
-                "unresolved_issues": [],
-            }), encoding="utf-8")
+            self.write_rechecks(root)
             pending = revision.verify(config_path)
             self.assertEqual(pending["status"], "qa_pending_human_approval")
             passed = revision.verify(config_path, approve=True, reviewer="Author")
             self.assertEqual(passed["status"], "qa_passed")
             self.assertEqual(passed["checks"]["rechecked_paragraphs"], 1)
+
+    def test_release_policy_blocks_score_above_ten(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_name:
+            root = Path(temp_name)
+            config_path, _ = self.make_project(root, release_policy=True)
+            revision.revise(config_path)
+            self.write_rechecks(root)
+            self.write_similarity_attestation(root, 21)
+            result = revision.verify(config_path)
+            self.assertEqual(result["status"], "qa_failed")
+            self.assertEqual(result["checks"]["release_similarity_policy"], "failed")
+            self.assertIn("21% exceeds", " ".join(result["failures"]))
+
+    def test_release_policy_allows_attested_score_at_or_below_ten(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_name:
+            root = Path(temp_name)
+            config_path, _ = self.make_project(root, release_policy=True)
+            revision.revise(config_path)
+            self.write_rechecks(root)
+            self.write_similarity_attestation(root, 9.8)
+            passed = revision.verify(config_path, approve=True, reviewer="Author")
+            self.assertEqual(passed["status"], "qa_passed")
+            self.assertEqual(passed["checks"]["release_similarity_policy"], "passed")
+            self.assertEqual(passed["release_policy"]["reports"][0]["overall_similarity_percent"], 9.8)
+
+    def test_attest_release_generates_stable_hash_bound_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_name:
+            root = Path(temp_name)
+            config_path, _ = self.make_project(root, release_policy=True)
+            revision.revise(config_path)
+            report = root / "turnitin-post-revision.txt"
+            report.write_text("Turnitin Similarity Report\nOverall Similarity: 7%\n", encoding="utf-8")
+            first = revision.attest_release(config_path, report, "turnitin", "Author")
+            first_bytes = (root / "similarity-release-attestation.json").read_bytes()
+            second = revision.attest_release(config_path, report, "turnitin", "Author")
+            self.assertEqual(first_bytes, (root / "similarity-release-attestation.json").read_bytes())
+            self.assertTrue(first["within_policy"])
+            self.assertEqual(second["overall_similarity_percent"], 7)
 
     def test_changed_number_is_blocked(self) -> None:
         with tempfile.TemporaryDirectory() as temp_name:

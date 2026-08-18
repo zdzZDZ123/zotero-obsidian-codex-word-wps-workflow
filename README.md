@@ -107,7 +107,11 @@ protected terms, citation loss, table/figure references, headings, images, and
 direct quotations. All reviewed paragraphs must then pass ARS Phase D,
 citation, data, and fact checks. Only explicit named approval of the exact file
 hash emits `qa_passed`; the Word/WPS formatter refuses any other state. It never
-promises or optimizes for a target similarity percentage. See
+promises or optimizes for a target similarity percentage. Projects may enable
+a fail-closed release policy (the starter uses `<= 10%`) over a post-revision,
+hash-attested, user-exported CNKI/Turnitin/iThenticate report. A higher or stale
+report blocks Word/WPS output; the threshold remains a policy, not a guaranteed
+future score. See
 [Originality revision](docs/originality-revision.md).
 
 ## Responsibility Boundaries

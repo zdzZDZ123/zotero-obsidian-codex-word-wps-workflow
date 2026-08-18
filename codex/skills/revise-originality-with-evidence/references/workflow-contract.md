@@ -34,6 +34,12 @@ recheck_results: recheck-results.json
 review:
   require_human_approval: true
   block_severities: [CRITICAL, SERIOUS, MODERATE]
+release_policy:
+  enabled: true
+  max_overall_similarity_percent: 10
+  require_vendor_recheck: true
+  accepted_vendors: [cnki, turnitin, ithenticate]
+  attestation: similarity-release-attestation.json
 ```
 
 The evidence manifest is deliberately small and may be generated from Zotero
@@ -51,6 +57,23 @@ notes or a research ledger:
   ]
 }
 ```
+
+When `release_policy` is enabled, `similarity-release-attestation.json` binds
+the exact revised manuscript hash to one or more user-exported post-revision
+vendor reports. Each report entry records its project-relative path, SHA-256,
+and vendor. The helper reads only an explicitly labelled whole-document score
+such as `Overall Similarity` or `总文字复制比`; a per-match percentage cannot
+satisfy this gate. Every attested accepted-vendor score must be at or below the
+configured maximum. Missing, stale, ambiguous, unsupported, or higher-scoring
+reports keep the QA state failed and therefore block Word/WPS formatting.
+
+This is a publication policy gate, not a prediction or guarantee. The report
+remains the user's vendor-exported evidence, and a later database or settings
+change can produce a different score.
+
+Use `attest-release` after `revise` to populate the attestation safely. The
+command refuses reports outside the private project, unsupported vendors,
+missing whole-document labels, and stale revised-manuscript artifacts.
 
 Each revision proposal must identify the original paragraph, all match IDs,
 the meaning memo, replacement text, verified source evidence, declared citation
@@ -70,7 +93,7 @@ and facts.
 - `qa_pending_human_approval`: deterministic and ARS rechecks passed, but the
   author has not explicitly approved the copy.
 - `qa_failed`: a protected invariant changed, evidence is missing, or a blocking
-  issue remains.
+  issue remains, including a failed configured release-similarity policy.
 - `qa_passed`: every changed paragraph was rechecked, no blocking issue remains,
   and a named reviewer explicitly approved the copy.
 
