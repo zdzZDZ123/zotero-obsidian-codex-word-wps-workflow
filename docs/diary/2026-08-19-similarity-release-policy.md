@@ -186,3 +186,43 @@ Review `/codex/skills/revise-originality-with-evidence/tests/test_originality_re
 ### Future work
 
 Commit this hardening pass and attempt one bounded GitHub push. If network access fails again, preserve a clean local branch and report the exact blocker.
+
+## Step 5: publish the validated hardening pass
+
+### Prompt Context
+
+**Verbatim prompt:** 继续完善
+**Interpretation:** Make the completed improvements available to other computers through the public repository.
+**Inferred intent:** Finish the implementation loop with a verified remote state rather than leaving local-only commits.
+
+### What I did
+
+I committed the hardening pass as `35fa4ba` and ran one bounded `git push origin main`. I then compared the local `HEAD` with `refs/heads/main` from the remote.
+
+### Why
+
+The previous publication attempt was blocked by network resets, and the user expects other computers to be able to pull the finished workflow.
+
+### What worked
+
+GitHub accepted commits `2639a8b`, `68f9022`, and `35fa4ba`. The local and remote hashes both resolved to `35fa4ba05e5474adbd2cc25b23929fbe298b3661`, and `main` no longer showed ahead or behind.
+
+### What didn't work
+
+No publication failure occurred in this step; connectivity had recovered.
+
+### What I learned
+
+A single bounded retry after completing all local validation was sufficient, and explicit remote-hash comparison removed ambiguity about whether the push actually landed.
+
+### What was tricky
+
+The earlier failed pushes made command exit codes important because a later successful inspection command can otherwise hide a failed push in a chained shell invocation. This push checked `$LASTEXITCODE` before remote verification.
+
+### What warrants review
+
+Open the public repository at commit `35fa4ba` and confirm that the version 1.2.0 skill, schema, synthetic CNKI fixture, and documentation are visible.
+
+### Future work
+
+No work remains for this hardening pass. Future vendor-format changes should continue to fail closed until covered by privacy-safe fixtures.
