@@ -110,8 +110,10 @@ hash emits `qa_passed`; the Word/WPS formatter refuses any other state. It never
 promises or optimizes for a target similarity percentage. Projects may enable
 a fail-closed release policy (the starter uses `<= 10%`) over a post-revision,
 hash-attested, user-exported CNKI/Turnitin/iThenticate report. A higher or stale
-report blocks Word/WPS output; the threshold remains a policy, not a guaranteed
-future score. See
+report blocks Word/WPS output. Reports must identify the declared vendor, be
+newer than the revised manuscript, and remain within the configured age; a new
+same-vendor report atomically replaces the old one and clears stale approval.
+The threshold remains a policy, not a guaranteed future score. See
 [Originality revision](docs/originality-revision.md).
 
 ## Responsibility Boundaries

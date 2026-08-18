@@ -2,7 +2,7 @@
 name: revise-originality-with-evidence
 description: Repair CLOSE_MATCH, VERBATIM, and self-reuse findings in Chinese or English academic manuscripts by tracing every revision to Zotero evidence, preserving scientific invariants, and producing a reviewable semantic Markdown copy. Use after ARS originality screening or when importing an authorized CNKI, Turnitin, or iThenticate report; do not use to evade detection or target a similarity score.
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Revise Originality with Evidence
@@ -48,6 +48,10 @@ when a vendor report fails to import. Use
 6. When the project config enables a release policy, export a post-revision
    report from an accepted vendor, bind its SHA-256 and the exact revised
    manuscript hash in `similarity-release-attestation.json`, and run `verify`.
+   `attest-release` must replace the prior report from the same vendor and
+   immediately invalidate any earlier approval. Reports that predate the
+   revised manuscript, exceed the configured age, or conflict with their
+   declared vendor remain blocking.
    Only successful rechecks, a passing release policy, and an explicit
    `--approve --reviewer NAME` can emit `qa_passed`. Pass that manifest to the
    publication formatter through `originality_manifest`.
@@ -59,7 +63,7 @@ originality_revision.py doctor --self-test
 originality_revision.py import-report --input report.pdf --vendor auto --output normalized.json
 originality_revision.py analyze --config originality.yaml
 originality_revision.py revise --config originality.yaml
-originality_revision.py attest-release --config originality.yaml --report reports/post-revision.pdf --vendor turnitin --reviewer "Author"
+originality_revision.py attest-release --config originality.yaml --report reports/post-revision.pdf --vendor turnitin --reviewer "Author" --report-generated-at 2026-08-19T09:00:00+08:00
 originality_revision.py verify --config originality.yaml
 originality_revision.py verify --config originality.yaml --approve --reviewer "Author review"
 ```

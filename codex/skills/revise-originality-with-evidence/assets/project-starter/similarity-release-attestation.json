@@ -7,7 +7,9 @@
     {
       "path": "reports/REPLACE_WITH_POST_REVISION_VENDOR_REPORT.pdf",
       "sha256": "REPLACE_WITH_REPORT_SHA256",
-      "vendor": "turnitin"
+      "vendor": "turnitin",
+      "generated_at": "REPLACE_WITH_ISO_8601_REPORT_TIMESTAMP",
+      "timestamp_source": "explicit"
     }
   ]
 }

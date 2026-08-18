@@ -10,6 +10,13 @@ Vendor layouts change and scanned PDFs may have no text layer. Import therefore
 fails closed when no unambiguous match record can be extracted. It never treats
 an overall similarity score as a paragraph-level match.
 
+The release gate uses a stricter summary-only path. It accepts only an explicit
+whole-document label (`总文字复制比`, `总体相似度`, `Overall Similarity`, or
+`Similarity Index`) together with a recognizable CNKI, Turnitin, or iThenticate
+marker. Conflicting whole-document values, a vendor mismatch, match-level
+`相似度`, or a generic report are blocking. Do not add broad patterns that can
+silently reinterpret a source-match percentage as the whole-document score.
+
 ## Normalized fields
 
 | Field | Required | Meaning |

@@ -38,10 +38,12 @@
     "publicationFormattingSkill": "format-submission-manuscript",
     "publicationFormattingSkillVersion": "1.0.0",
     "originalityRevisionSkill": "revise-originality-with-evidence",
-    "originalityRevisionSkillVersion": "1.1.0",
+    "originalityRevisionSkillVersion": "1.2.0",
     "originalityReleasePolicyDefault": {
       "maxOverallSimilarityPercent": 10,
       "requireVendorRecheck": true,
+      "maxReportAgeDays": 30,
+      "requireReportAfterRevision": true,
       "acceptedVendors": ["cnki", "turnitin", "ithenticate"]
     },
     "originalityReportAdapters": ["cnki", "turnitin", "ithenticate", "generic-json", "generic-csv"],

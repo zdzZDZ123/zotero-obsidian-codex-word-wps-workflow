@@ -87,6 +87,8 @@ release_policy:
   enabled: true
   max_overall_similarity_percent: 10
   require_vendor_recheck: true
+  max_report_age_days: 30
+  require_report_after_revision: true
   accepted_vendors: [cnki, turnitin, ithenticate]
   attestation: similarity-release-attestation.json
 ```
@@ -96,12 +98,19 @@ accepted vendor and completes the attestation with the exact revised manuscript
 SHA-256, report SHA-256, reviewer, and timestamp. `verify` reads only an
 explicit whole-document label such as `Overall Similarity` or `总文字复制比`.
 Individual source-match percentages never satisfy or trigger this policy.
+The declared vendor must agree with a recognizable marker inside the report.
 
 Every attested score must be at or below `10` before `qa_passed` can be issued;
 otherwise Word/WPS formatting remains blocked. This threshold is a local
 release rule over user-supplied evidence. It does not guarantee that every
 paper, vendor, database snapshot, or future check will return the same score,
 and it never authorizes detector-evasion edits.
+
+The starter additionally requires the report to be no more than 30 days old
+and generated after the current revised manuscript. Adding a new report from
+the same vendor replaces its previous report rather than accumulating stale
+scores. Every new attestation clears an earlier `qa_passed` approval before any
+other command returns, so the formatter cannot consume a stale approval.
 
 The wrapper creates the hash-bound attestation without manual checksum work:
 
@@ -110,11 +119,14 @@ The wrapper creates the hash-bound attestation without manual checksum work:
   --config .\originality.yaml `
   --report .\reports\post-revision.pdf `
   --vendor turnitin `
-  --reviewer "Author review"
+  --reviewer "Author review" `
+  --report-generated-at "2026-08-19T09:00:00+08:00"
 ```
 
 The command returns exit code `4` when it successfully records a report whose
 score is above policy; subsequent `verify` remains `qa_failed`.
+Omit `--report-generated-at` only when the report file modification time is a
+trustworthy proxy for its export time.
 
 ## Report import
 

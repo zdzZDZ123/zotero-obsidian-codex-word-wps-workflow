@@ -38,6 +38,8 @@ release_policy:
   enabled: true
   max_overall_similarity_percent: 10
   require_vendor_recheck: true
+  max_report_age_days: 30
+  require_report_after_revision: true
   accepted_vendors: [cnki, turnitin, ithenticate]
   attestation: similarity-release-attestation.json
 ```
@@ -61,11 +63,14 @@ notes or a research ledger:
 When `release_policy` is enabled, `similarity-release-attestation.json` binds
 the exact revised manuscript hash to one or more user-exported post-revision
 vendor reports. Each report entry records its project-relative path, SHA-256,
-and vendor. The helper reads only an explicitly labelled whole-document score
+vendor, generation time, and timestamp source. The helper reads only an explicitly labelled whole-document score
 such as `Overall Similarity` or `总文字复制比`; a per-match percentage cannot
 satisfy this gate. Every attested accepted-vendor score must be at or below the
 configured maximum. Missing, stale, ambiguous, unsupported, or higher-scoring
 reports keep the QA state failed and therefore block Word/WPS formatting.
+The default contract also rejects reports older than 30 days or generated
+before the current revised manuscript. Re-attesting the same vendor replaces
+its prior report and invalidates any earlier manuscript approval immediately.
 
 This is a publication policy gate, not a prediction or guarantee. The report
 remains the user's vendor-exported evidence, and a later database or settings
@@ -73,7 +78,9 @@ change can produce a different score.
 
 Use `attest-release` after `revise` to populate the attestation safely. The
 command refuses reports outside the private project, unsupported vendors,
-missing whole-document labels, and stale revised-manuscript artifacts.
+missing or conflicting vendor markers, missing whole-document labels, and
+stale revised-manuscript artifacts. If `--report-generated-at` is omitted, the
+report file modification time is recorded explicitly as `file_mtime`.
 
 Each revision proposal must identify the original paragraph, all match IDs,
 the meaning memo, replacement text, verified source evidence, declared citation

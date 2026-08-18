@@ -106,3 +106,83 @@ Review the accepted whole-document label patterns and the default `<= 10%` polic
 No implementation work remains for this gate. Push the two local commits after
 GitHub connectivity returns. New vendor formats should be added only with
 privacy-safe fixtures and explicit whole-document labels.
+
+## Step 3: harden report replacement and stale-approval behavior
+
+### Prompt Context
+
+**Verbatim prompt:** 继续完善
+**Interpretation:** Continue improving the implemented release gate without weakening its academic-integrity boundary.
+**Inferred intent:** Make the 10% policy reliable under repeated real-world rechecks, report replacement, stale files, and previously approved manuscripts.
+
+### What I did
+
+I audited the approval and attestation state transitions, then updated `/codex/skills/revise-originality-with-evidence/scripts/originality_revision.py`. A new attestation now clears any prior approval before returning, replaces the prior report from the same vendor, verifies that the report's internal vendor marker matches the declaration, and records a report generation timestamp. The verifier rejects reports older than the configured age or generated before the current revision, persists rejected approval attempts as `qa_failed`, separates ARS failures from release-policy failures, and emits machine-readable next actions. I expanded the schema, starter, skill contract, report-import guidance, bilingual documentation, component lock, and privacy-safe fixtures.
+
+### Why
+
+The first release-gate version could leave an already-written `qa_passed` file on disk when a direct approval attempt failed after swapping reports. It also accumulated old and new reports from the same vendor and trusted the declared vendor without checking the report marker. Those behaviors could either block legitimate progress or let a stale formatter approval survive longer than intended.
+
+### What worked
+
+All 19 originality tests passed. They now cover atomic invalidation after a previously passed 8% report is replaced by a 21% report, same-vendor replacement, CNKI `总文字复制比`, conflicting summary scores, vendor-marker mismatch, stale report rejection, persisted rejected approval, attestation idempotence, and all earlier evidence and scientific-invariant checks.
+
+### What didn't work
+
+The first config patch included an unrelated `utc_now` context hunk in the wrong location and failed with `apply_patch verification failed: Failed to find expected lines ... def utc_now() -> str`. No file changed. I split the patch into focused config and helper updates, which applied successfully.
+
+### What I learned
+
+The most important safety property is not the numeric comparison itself but immediate revocation: every change to the report evidence must invalidate the formatter-facing approval synchronously. Vendor identity and report age also need to be evidence fields, not assumptions derived from filenames.
+
+### What was tricky
+
+Report export timestamps are not consistently embedded in vendor documents. The CLI accepts an explicit ISO-8601 time and otherwise records file modification time with `timestamp_source: file_mtime`, making the weaker provenance visible instead of silently presenting it as vendor metadata.
+
+### What warrants review
+
+Review the 30-day default, whether a specific institution requires a shorter window, and whether file modification time is acceptable when `--report-generated-at` is omitted. Confirm that the formatter continues to reject the immediately invalidated manifest before any WPS or Word automation starts.
+
+### Future work
+
+Run the complete formatter/WPS regression, sync skill version 1.2.0 into the local Codex installation, validate the public repository, commit, and retry GitHub publication once.
+
+## Step 4: validate version 1.2.0 across the installed pipeline
+
+### Prompt Context
+
+**Verbatim prompt:** 继续完善
+**Interpretation:** Finish the hardening pass with runtime and cross-layer verification.
+**Inferred intent:** Prove that stricter originality state transitions do not break Word/WPS submission formatting or local installation.
+
+### What I did
+
+I ran the 19-test originality suite, validated all JSON contracts, ran `quick_validate.py`, executed all 9 publication-formatting tests including the WPS backend, ran the repository privacy validator, reinstalled the skill idempotently, executed the installed `doctor --self-test`, and compared the installed helper SHA-256 with the repository source.
+
+### Why
+
+The release policy is consumed indirectly by Word/WPS through `qa_passed`. Cross-layer tests are therefore required to show that immediate approval invalidation blocks stale output while valid manifests still reach the existing editor backend.
+
+### What worked
+
+All 19 originality tests and all 9 formatting tests passed. The skill validator reported `Skill is valid!`; repository validation reported 150 files, 5 local skills, and no forbidden artifacts or obvious secrets. The installed doctor passed with Python 3.12.13, PyYAML 6.0.3, and pypdf 6.16.1. The installed helper hash exactly matched the version 1.2.0 repository helper.
+
+### What didn't work
+
+No new runtime, validation, or integration failures occurred in this step.
+
+### What I learned
+
+The existing formatter contract remains a useful narrow boundary: it does not need to understand percentages, vendors, or timestamps because the originality layer now revokes `qa_passed` atomically whenever report evidence changes.
+
+### What was tricky
+
+The public fixture needed to prove Chinese whole-document parsing without resembling a private manuscript or copyrighted report. A minimal synthetic HTML file contains only a vendor marker and `总文字复制比`.
+
+### What warrants review
+
+Review `/codex/skills/revise-originality-with-evidence/tests/test_originality_revision.py` for state-transition coverage and `/docs/originality-revision.md` for the operator-facing timestamp guidance.
+
+### Future work
+
+Commit this hardening pass and attempt one bounded GitHub push. If network access fails again, preserve a clean local branch and report the exact blocker.

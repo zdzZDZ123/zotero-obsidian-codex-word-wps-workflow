@@ -18,5 +18,7 @@ release_policy:
   enabled: true
   max_overall_similarity_percent: 10
   require_vendor_recheck: true
+  max_report_age_days: 30
+  require_report_after_revision: true
   accepted_vendors: [cnki, turnitin, ithenticate]
   attestation: similarity-release-attestation.json

@@ -13,7 +13,7 @@ import argparse
 from collections import Counter
 import csv
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
 import hashlib
 from html.parser import HTMLParser
@@ -66,6 +66,19 @@ def json_dump(value: Any, path: Path) -> None:
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def parse_utc_timestamp(value: Any, label: str) -> datetime:
+    text = str(value or "").strip()
+    if not text:
+        raise OriginalityError(f"{label} is missing")
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise OriginalityError(f"{label} must be an ISO-8601 timestamp with timezone") from exc
+    if parsed.tzinfo is None:
+        raise OriginalityError(f"{label} must include a timezone")
+    return parsed.astimezone(timezone.utc)
 
 
 def strict_keys(value: dict[str, Any], allowed: set[str], label: str) -> None:
@@ -134,7 +147,11 @@ def load_config(config_path: Path) -> tuple[dict[str, Any], Path]:
             raise OriginalityError("release_policy must be a mapping")
         strict_keys(
             release_policy,
-            {"enabled", "max_overall_similarity_percent", "require_vendor_recheck", "accepted_vendors", "attestation"},
+            {
+                "enabled", "max_overall_similarity_percent", "require_vendor_recheck",
+                "accepted_vendors", "attestation", "max_report_age_days",
+                "require_report_after_revision",
+            },
             "release_policy",
         )
         if not isinstance(release_policy.get("enabled", True), bool):
@@ -147,6 +164,11 @@ def load_config(config_path: Path) -> tuple[dict[str, Any], Path]:
         vendors = release_policy.get("accepted_vendors", ["cnki", "turnitin", "ithenticate"])
         if not isinstance(vendors, list) or not vendors or any(item not in {"cnki", "turnitin", "ithenticate"} for item in vendors):
             raise OriginalityError("release_policy.accepted_vendors must contain cnki, turnitin, and/or ithenticate")
+        max_age = release_policy.get("max_report_age_days", 30)
+        if not isinstance(max_age, int) or isinstance(max_age, bool) or not 1 <= max_age <= 3650:
+            raise OriginalityError("release_policy.max_report_age_days must be an integer between 1 and 3650")
+        if not isinstance(release_policy.get("require_report_after_revision", True), bool):
+            raise OriginalityError("release_policy.require_report_after_revision must be true or false")
         if release_policy.get("enabled", True) and release_policy.get("require_vendor_recheck", True):
             if not str(release_policy.get("attestation", "")).strip():
                 raise OriginalityError("release_policy.attestation is required when the vendor recheck gate is enabled")
@@ -300,7 +322,12 @@ def extract_overall_similarity(text: str) -> float | None:
     return next(iter(found)) if found else None
 
 
-def report_summary(path: Path, requested_vendor: str = "auto") -> dict[str, Any]:
+def report_summary(
+    path: Path,
+    requested_vendor: str = "auto",
+    *,
+    require_vendor_marker: bool = False,
+) -> dict[str, Any]:
     suffix = path.suffix.lower()
     if suffix == ".json":
         raw_text = path.read_text(encoding="utf-8", errors="replace")
@@ -308,13 +335,20 @@ def report_summary(path: Path, requested_vendor: str = "auto") -> dict[str, Any]
             payload = json.loads(raw_text)
         except json.JSONDecodeError as exc:
             raise OriginalityError(f"Cannot read JSON similarity report: {exc}") from exc
-        vendor = detect_vendor(str(payload.get("vendor", "")) if isinstance(payload, dict) else raw_text, requested_vendor)
+        detected_vendor = detect_vendor(str(payload.get("vendor", "")) if isinstance(payload, dict) else raw_text, "auto")
         explicit = payload.get("overall_similarity_percent") if isinstance(payload, dict) else None
         overall = parse_score(explicit) if explicit is not None else extract_overall_similarity(raw_text)
     else:
         raw_text = path.read_text(encoding="utf-8-sig", errors="replace") if suffix == ".csv" else read_text_report(path)
-        vendor = detect_vendor(raw_text, requested_vendor)
+        detected_vendor = detect_vendor(raw_text, "auto")
         overall = extract_overall_similarity(raw_text)
+    if requested_vendor != "auto" and detected_vendor not in {"generic", requested_vendor}:
+        raise OriginalityError(
+            f"Report vendor marker is {detected_vendor}, but the attestation declares {requested_vendor}"
+        )
+    if require_vendor_marker and detected_vendor == "generic":
+        raise OriginalityError("Release report does not contain a recognizable vendor marker")
+    vendor = requested_vendor if requested_vendor != "auto" else detected_vendor
     if overall is not None and not 0 <= overall <= 100:
         raise OriginalityError(f"Overall similarity percentage is outside 0-100: {overall}")
     return {
@@ -643,6 +677,16 @@ def evaluate_release_policy(config: dict[str, Any], base: Path, revised_path: Pa
     maximum = float(policy.get("max_overall_similarity_percent", 10))
     require_recheck = policy.get("require_vendor_recheck", True)
     accepted = set(policy.get("accepted_vendors", ["cnki", "turnitin", "ithenticate"]))
+    max_age_days = int(policy.get("max_report_age_days", 30))
+    require_after_revision = policy.get("require_report_after_revision", True)
+    now = datetime.now(timezone.utc)
+    revision_manifest_path = revised_path.parent / "revision-manifest.json"
+    revision_manifest = load_json_object(revision_manifest_path, "revision manifest")
+    revision_created_at = parse_utc_timestamp(
+        revision_manifest.get("created_at")
+        or datetime.fromtimestamp(revised_path.stat().st_mtime, timezone.utc).isoformat(),
+        "revision manifest created_at",
+    )
     result: dict[str, Any] = {
         "status": "failed",
         "enforced": True,
@@ -650,6 +694,9 @@ def evaluate_release_policy(config: dict[str, Any], base: Path, revised_path: Pa
         "max_overall_similarity_percent": maximum,
         "require_vendor_recheck": require_recheck,
         "accepted_vendors": sorted(accepted),
+        "max_report_age_days": max_age_days,
+        "require_report_after_revision": require_after_revision,
+        "revision_created_at": revision_created_at.replace(microsecond=0).isoformat(),
         "reports": [],
         "failures": [],
         "limitations": [
@@ -671,8 +718,12 @@ def evaluate_release_policy(config: dict[str, Any], base: Path, revised_path: Pa
         result["failures"].append("similarity release attestation does not match the revised manuscript hash")
     if not str(attestation.get("reviewer", "")).strip():
         result["failures"].append("similarity release attestation reviewer is missing")
-    if not str(attestation.get("checked_at", "")).strip():
-        result["failures"].append("similarity release attestation timestamp is missing")
+    try:
+        attested_at = parse_utc_timestamp(attestation.get("checked_at"), "similarity release attestation checked_at")
+        if attested_at > now.replace(microsecond=0) + timedelta(minutes=5):
+            result["failures"].append("similarity release attestation timestamp is implausibly in the future")
+    except OriginalityError as exc:
+        result["failures"].append(str(exc))
     reports = attestation.get("reports")
     if not isinstance(reports, list) or not reports:
         result["failures"].append("similarity release attestation must contain at least one report")
@@ -682,7 +733,7 @@ def evaluate_release_policy(config: dict[str, Any], base: Path, revised_path: Pa
             result["failures"].append(f"attested report {index} must be an object")
             continue
         try:
-            strict_keys(item, {"path", "sha256", "vendor"}, f"attested report {index}")
+            strict_keys(item, {"path", "sha256", "vendor", "generated_at", "timestamp_source"}, f"attested report {index}")
             report_path = resolve_inside(base, item.get("path"), f"attested report {index}.path", required=True)
             assert report_path
             actual_hash = sha256_file(report_path)
@@ -693,17 +744,37 @@ def evaluate_release_policy(config: dict[str, Any], base: Path, revised_path: Pa
             if requested_vendor not in accepted:
                 result["failures"].append(f"attested report vendor is not accepted: {requested_vendor}")
                 continue
-            summary = report_summary(report_path, requested_vendor)
+            summary = report_summary(report_path, requested_vendor, require_vendor_marker=True)
             if summary["vendor"] not in accepted:
                 result["failures"].append(f"detected report vendor is not accepted: {summary['vendor']}")
                 continue
             score = summary["overall_similarity_percent"]
+            generated_at = parse_utc_timestamp(item.get("generated_at"), f"attested report {index}.generated_at")
+            timestamp_source = str(item.get("timestamp_source", "")).strip()
+            if timestamp_source not in {"explicit", "file_mtime"}:
+                result["failures"].append(
+                    f"attested report {index}.timestamp_source must be explicit or file_mtime"
+                )
+            if generated_at > now + timedelta(minutes=5):
+                result["failures"].append(f"attested report is implausibly dated in the future: {report_path.name}")
+            age_days = max(0.0, (now - generated_at).total_seconds() / 86400)
+            if age_days > max_age_days:
+                result["failures"].append(
+                    f"attested report is {age_days:.1f} days old, exceeding the {max_age_days}-day limit: {report_path.name}"
+                )
+            if require_after_revision and generated_at < revision_created_at:
+                result["failures"].append(
+                    f"attested report predates the revised manuscript: {report_path.name}"
+                )
             result["reports"].append({
                 "path": str(item.get("path")),
                 "sha256": actual_hash,
                 "vendor": summary["vendor"],
                 "overall_similarity_percent": score,
                 "within_policy": score is not None and score <= maximum,
+                "generated_at": generated_at.replace(microsecond=0).isoformat(),
+                "timestamp_source": timestamp_source,
+                "age_days": round(age_days, 3),
             })
             if score is None:
                 result["failures"].append(f"no explicit whole-document similarity score found: {report_path.name}")
@@ -724,7 +795,13 @@ def evaluate_release_policy(config: dict[str, Any], base: Path, revised_path: Pa
     return result
 
 
-def attest_release(config_path: Path, report_value: Path, vendor: str, reviewer: str) -> dict[str, Any]:
+def attest_release(
+    config_path: Path,
+    report_value: Path,
+    vendor: str,
+    reviewer: str,
+    report_generated_at: str | None = None,
+) -> dict[str, Any]:
     config, base = load_config(config_path)
     policy = config.get("release_policy")
     if not isinstance(policy, dict) or not policy.get("enabled", True):
@@ -748,32 +825,44 @@ def attest_release(config_path: Path, report_value: Path, vendor: str, reviewer:
         raise OriginalityError(f"release report escapes the manuscript project: {report_value}")
     if not report_path.is_file():
         raise OriginalityError(f"Release report is missing: {report_value}")
-    summary = report_summary(report_path, vendor)
+    summary = report_summary(report_path, vendor, require_vendor_marker=True)
     score = summary["overall_similarity_percent"]
     if score is None:
         raise OriginalityError("Release report has no explicit whole-document similarity score")
     attestation_path = resolve_inside(base, policy.get("attestation"), "release_policy.attestation", required=False)
     assert attestation_path
     relative_report = report_path.relative_to(base).as_posix()
-    report_item = {"path": relative_report, "sha256": sha256_file(report_path), "vendor": vendor}
+    if report_generated_at:
+        generated_at = parse_utc_timestamp(report_generated_at, "--report-generated-at")
+        timestamp_source = "explicit"
+    else:
+        generated_at = datetime.fromtimestamp(report_path.stat().st_mtime, timezone.utc)
+        timestamp_source = "file_mtime"
+    report_item = {
+        "path": relative_report,
+        "sha256": sha256_file(report_path),
+        "vendor": vendor,
+        "generated_at": generated_at.replace(microsecond=0).isoformat(),
+        "timestamp_source": timestamp_source,
+    }
     existing: dict[str, Any] = {}
     if attestation_path.is_file():
         existing = load_json_object(attestation_path, "similarity release attestation")
     existing_reports = existing.get("reports", []) if isinstance(existing.get("reports", []), list) else []
     report_index = {
-        str(item.get("path")): item
+        str(item.get("vendor")): item
         for item in existing_reports
-        if isinstance(item, dict) and str(item.get("path", "")).strip()
+        if isinstance(item, dict) and str(item.get("vendor", "")).strip()
     }
-    report_index[relative_report] = report_item
+    report_index[vendor] = report_item
     manuscript_hash = sha256_file(revised_path)
     stable_existing = (
         existing.get("manuscript_sha256") == manuscript_hash
         and existing.get("reviewer") == reviewer.strip()
         and report_index == {
-            str(item.get("path")): item
+            str(item.get("vendor")): item
             for item in existing_reports
-            if isinstance(item, dict) and str(item.get("path", "")).strip()
+            if isinstance(item, dict) and str(item.get("vendor", "")).strip()
         }
     )
     attestation = {
@@ -785,6 +874,27 @@ def attest_release(config_path: Path, report_value: Path, vendor: str, reviewer:
     }
     json_dump(attestation, attestation_path)
     maximum = float(policy.get("max_overall_similarity_percent", 10))
+    policy_result = evaluate_release_policy(config, base, revised_path)
+    manifest["status"] = "qa_failed" if policy_result["status"] == "failed" else "qa_pending_recheck"
+    manifest["approval"] = None
+    manifest["release_policy"] = policy_result
+    json_dump(manifest, manifest_path)
+    json_dump({
+        "schema_version": SCHEMA_VERSION,
+        "status": manifest["status"],
+        "manuscript": revised_path.name,
+        "manuscript_sha256": manuscript_hash,
+        "checks": {
+            "deterministic_invariants": "passed",
+            "ars_recheck": "pending",
+            "human_approval": "pending",
+            "release_similarity_policy": policy_result["status"],
+        },
+        "failures": [f"release policy: {item}" for item in policy_result.get("failures", [])],
+        "approval": None,
+        "release_policy": policy_result,
+        "next_actions": ["run verify after ARS rechecks"],
+    }, output / "originality-qa-report.json")
     return {
         "status": "attested",
         "attestation": str(attestation_path),
@@ -793,6 +903,8 @@ def attest_release(config_path: Path, report_value: Path, vendor: str, reviewer:
         "overall_similarity_percent": score,
         "max_overall_similarity_percent": maximum,
         "within_policy": score <= maximum,
+        "qa_status": manifest["status"],
+        "replaced_vendor_report": vendor,
     }
 
 
@@ -1171,6 +1283,7 @@ def revise(config_path: Path) -> dict[str, Any]:
     revision_manifest = {
         "schema_version": SCHEMA_VERSION,
         "status": "qa_pending_recheck",
+        "created_at": utc_now(),
         "source_manuscript": manuscript.name,
         "source_manuscript_sha256": sha256_file(manuscript),
         "revised_manuscript": revised_path.name,
@@ -1233,45 +1346,56 @@ def verify(config_path: Path, *, approve: bool = False, reviewer: str | None = N
     if recheck.get("schema_version") != SCHEMA_VERSION or not isinstance(recheck.get("paragraphs"), list):
         raise OriginalityError("recheck results must use schema_version 1 and contain a paragraphs list")
     result_index = {str(item.get("paragraph_id")): item for item in recheck["paragraphs"] if isinstance(item, dict)}
-    failures: list[str] = []
+    recheck_failures: list[str] = []
     if not str(recheck.get("reviewer", "")).strip():
-        failures.append("recheck reviewer is missing")
+        recheck_failures.append("recheck reviewer is missing")
     if not str(recheck.get("checked_at", "")).strip():
-        failures.append("recheck timestamp is missing")
+        recheck_failures.append("recheck timestamp is missing")
     if str(recheck.get("integrity_stage", "")) not in {"2.5", "4.5"}:
-        failures.append("recheck integrity_stage must be 2.5 or 4.5")
+        recheck_failures.append("recheck integrity_stage must be 2.5 or 4.5")
     for required in manifest.get("reviewed_paragraphs", []):
         paragraph_id = required["paragraph_id"]
         actual = result_index.get(paragraph_id)
         if not actual:
-            failures.append(f"missing recheck for {paragraph_id}")
+            recheck_failures.append(f"missing recheck for {paragraph_id}")
             continue
         if actual.get("revised_sha256") != required.get("revised_sha256"):
-            failures.append(f"stale recheck hash for {paragraph_id}")
+            recheck_failures.append(f"stale recheck hash for {paragraph_id}")
         for check in REQUIRED_RECHECKS:
             if str(actual.get(check, "")).upper() != "PASS":
-                failures.append(f"{check} did not pass for {paragraph_id}")
+                recheck_failures.append(f"{check} did not pass for {paragraph_id}")
     block_severities = set(config.get("review", {}).get("block_severities", DEFAULT_BLOCK_SEVERITIES))
     for issue in recheck.get("unresolved_issues", []):
         if isinstance(issue, dict):
             severity = str(issue.get("severity", "SERIOUS")).upper()
             if severity in block_severities:
-                failures.append(f"unresolved {severity} issue: {issue.get('id') or issue.get('description') or 'unknown'}")
+                recheck_failures.append(f"unresolved {severity} issue: {issue.get('id') or issue.get('description') or 'unknown'}")
         elif issue:
-            failures.append(f"unresolved issue: {issue}")
+            recheck_failures.append(f"unresolved issue: {issue}")
 
     release_policy = evaluate_release_policy(config, base, revised_path)
-    failures.extend(f"release policy: {item}" for item in release_policy.get("failures", []))
+    policy_failures = [f"release policy: {item}" for item in release_policy.get("failures", [])]
+    failures = recheck_failures + policy_failures
+
+    if approve and (not reviewer or not reviewer.strip()):
+        failures.append("--approve requires a non-empty --reviewer")
 
     status = "qa_failed" if failures else "qa_pending_human_approval"
     approval: dict[str, Any] | None = None
-    if approve:
-        if failures:
-            raise OriginalityError("Cannot approve a revision with failed rechecks: " + "; ".join(failures))
-        if not reviewer or not reviewer.strip():
-            raise OriginalityError("--approve requires a non-empty --reviewer")
+    approval_attempt = "not_requested"
+    if approve and not failures:
         status = "qa_passed"
         approval = {"reviewer": reviewer.strip(), "approved_at": utc_now(), "explicit": True}
+        approval_attempt = "accepted"
+    elif approve:
+        approval_attempt = "rejected"
+    next_actions: list[str] = []
+    if recheck_failures:
+        next_actions.append("complete or correct every requested ARS Phase D, citation, data, and fact recheck")
+    if policy_failures:
+        next_actions.append("correct the release attestation or export a new post-revision vendor report, then run attest-release")
+    if not failures and not approval:
+        next_actions.append("run verify --approve --reviewer NAME for the exact reviewed manuscript")
     qa = {
         "schema_version": SCHEMA_VERSION,
         "status": status,
@@ -1280,7 +1404,7 @@ def verify(config_path: Path, *, approve: bool = False, reviewer: str | None = N
         "source_manuscript_sha256": manifest.get("source_manuscript_sha256"),
         "checks": {
             "deterministic_invariants": "passed",
-            "ars_recheck": "failed" if failures else "passed",
+            "ars_recheck": "failed" if recheck_failures else "passed",
             "rechecked_paragraphs": len(manifest.get("reviewed_paragraphs", [])),
             "human_approval": "passed" if approval else "pending",
             "release_similarity_policy": release_policy["status"],
@@ -1292,7 +1416,9 @@ def verify(config_path: Path, *, approve: bool = False, reviewer: str | None = N
         },
         "failures": failures,
         "approval": approval,
+        "approval_attempt": approval_attempt,
         "release_policy": release_policy,
+        "next_actions": next_actions,
         "limitations": [
             "This is not an official CNKI, Turnitin, or iThenticate verdict",
             "The configured percentage is a release gate over an attested vendor report, not a promised or optimized score",
@@ -1353,6 +1479,7 @@ def build_parser() -> argparse.ArgumentParser:
     attest_cmd.add_argument("--report", required=True, type=Path)
     attest_cmd.add_argument("--vendor", required=True, choices=["cnki", "turnitin", "ithenticate"])
     attest_cmd.add_argument("--reviewer", required=True)
+    attest_cmd.add_argument("--report-generated-at", help="ISO-8601 vendor report timestamp; defaults to file mtime")
     verify_cmd = sub.add_parser("verify", help="Verify ARS rechecks and explicit human approval")
     verify_cmd.add_argument("--config", required=True, type=Path)
     verify_cmd.add_argument("--approve", action="store_true")
@@ -1402,7 +1529,13 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
         if args.command == "attest-release":
-            result = attest_release(args.config, args.report, args.vendor, args.reviewer)
+            result = attest_release(
+                args.config,
+                args.report,
+                args.vendor,
+                args.reviewer,
+                report_generated_at=args.report_generated_at,
+            )
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0 if result["within_policy"] else 4
         if args.command == "verify":

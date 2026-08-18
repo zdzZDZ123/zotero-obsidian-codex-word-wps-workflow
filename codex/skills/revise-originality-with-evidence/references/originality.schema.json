@@ -39,6 +39,8 @@
         "enabled": {"type": "boolean"},
         "max_overall_similarity_percent": {"type": "number", "minimum": 0, "maximum": 100},
         "require_vendor_recheck": {"type": "boolean"},
+        "max_report_age_days": {"type": "integer", "minimum": 1, "maximum": 3650},
+        "require_report_after_revision": {"type": "boolean"},
         "accepted_vendors": {
           "type": "array",
           "minItems": 1,

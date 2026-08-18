@@ -58,11 +58,17 @@ class ReportImportTests(unittest.TestCase):
 
     def test_only_explicit_whole_document_score_is_extracted(self) -> None:
         self.assertIsNone(revision.import_report_data(FIXTURES / "cnki-extracted.html")["overall_similarity_percent"])
+        cnki = revision.report_summary(FIXTURES / "cnki-release-summary.html", "cnki", require_vendor_marker=True)
+        self.assertEqual(cnki["overall_similarity_percent"], 9.2)
         text = "Turnitin Similarity Report\nOverall Similarity: 9.8%\nMatch 1\nMatched text: Example overlap.\nSource: Source\n"
         with tempfile.TemporaryDirectory() as temp_name:
             path = Path(temp_name) / "turnitin.txt"
             path.write_text(text, encoding="utf-8")
             self.assertEqual(revision.import_report_data(path)["overall_similarity_percent"], 9.8)
+
+    def test_conflicting_whole_document_scores_fail_closed(self) -> None:
+        with self.assertRaisesRegex(revision.OriginalityError, "ambiguous overall similarity"):
+            revision.extract_overall_similarity("Overall Similarity: 8%\nSimilarity Index: 9%")
 
 
 class ParagraphMappingTests(unittest.TestCase):
@@ -204,11 +210,13 @@ class EndToEndTests(unittest.TestCase):
             "schema_version": 1,
             "manuscript_sha256": revision.sha256_file(revised),
             "reviewer": "Author",
-            "checked_at": "2026-08-19T01:00:00+00:00",
+            "checked_at": revision.utc_now(),
             "reports": [{
                 "path": "turnitin-recheck.txt",
                 "sha256": revision.sha256_file(report),
                 "vendor": "turnitin",
+                "generated_at": revision.utc_now(),
+                "timestamp_source": "explicit",
             }],
         }
         (root / "similarity-release-attestation.json").write_text(json.dumps(attestation), encoding="utf-8")
@@ -270,6 +278,60 @@ class EndToEndTests(unittest.TestCase):
             self.assertEqual(first_bytes, (root / "similarity-release-attestation.json").read_bytes())
             self.assertTrue(first["within_policy"])
             self.assertEqual(second["overall_similarity_percent"], 7)
+
+    def test_new_same_vendor_report_replaces_old_and_invalidates_approval(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_name:
+            root = Path(temp_name)
+            config_path, _ = self.make_project(root, release_policy=True)
+            revision.revise(config_path)
+            self.write_rechecks(root)
+            first_report = root / "turnitin-first.txt"
+            first_report.write_text("Turnitin Similarity Report\nOverall Similarity: 8%\n", encoding="utf-8")
+            revision.attest_release(config_path, first_report, "turnitin", "Author")
+            self.assertEqual(revision.verify(config_path, approve=True, reviewer="Author")["status"], "qa_passed")
+
+            high_report = root / "turnitin-second.txt"
+            high_report.write_text("Turnitin Similarity Report\nOverall Similarity: 21%\n", encoding="utf-8")
+            blocked = revision.attest_release(config_path, high_report, "turnitin", "Author")
+            self.assertEqual(blocked["qa_status"], "qa_failed")
+            qa = json.loads((root / "originality-output" / "originality-qa-report.json").read_text(encoding="utf-8"))
+            self.assertEqual(qa["status"], "qa_failed")
+            self.assertIsNone(qa["approval"])
+            attestation = json.loads((root / "similarity-release-attestation.json").read_text(encoding="utf-8"))
+            self.assertEqual(len(attestation["reports"]), 1)
+            self.assertEqual(attestation["reports"][0]["path"], "turnitin-second.txt")
+
+    def test_vendor_marker_mismatch_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_name:
+            root = Path(temp_name)
+            config_path, _ = self.make_project(root, release_policy=True)
+            revision.revise(config_path)
+            report = root / "mislabelled.txt"
+            report.write_text("Turnitin Similarity Report\nOverall Similarity: 8%\n", encoding="utf-8")
+            with self.assertRaisesRegex(revision.OriginalityError, "vendor marker is turnitin"):
+                revision.attest_release(config_path, report, "cnki", "Author")
+
+    def test_stale_report_and_rejected_approval_are_written_to_qa(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_name:
+            root = Path(temp_name)
+            config_path, _ = self.make_project(root, release_policy=True)
+            revision.revise(config_path)
+            self.write_rechecks(root)
+            report = root / "turnitin-stale.txt"
+            report.write_text("Turnitin Similarity Report\nOverall Similarity: 8%\n", encoding="utf-8")
+            revision.attest_release(
+                config_path,
+                report,
+                "turnitin",
+                "Author",
+                report_generated_at="2020-01-01T00:00:00+00:00",
+            )
+            result = revision.verify(config_path, approve=True, reviewer="Author")
+            self.assertEqual(result["status"], "qa_failed")
+            self.assertEqual(result["approval_attempt"], "rejected")
+            self.assertIn("days old", " ".join(result["failures"]))
+            persisted = json.loads((root / "originality-output" / "originality-qa-report.json").read_text(encoding="utf-8"))
+            self.assertEqual(persisted["status"], "qa_failed")
 
     def test_changed_number_is_blocked(self) -> None:
         with tempfile.TemporaryDirectory() as temp_name:
