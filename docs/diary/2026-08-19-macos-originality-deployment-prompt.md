@@ -43,3 +43,43 @@ Review the minimum commit, private starter destination, Homebrew boundary, and a
 ### Future work
 
 Run repository validation, commit and publish the prompt, then provide the exact copyable text and public file link to the user.
+
+## Step 2: validate and publish the Mac handoff
+
+### Prompt Context
+
+**Verbatim prompt:** 你现在把你已经在这个电脑上完成的新功能降重，写一个提示词脚本,我需要把它复制粘贴到我的Mac电脑的Codex上面去,然后让Codex根据这个提示词完成你所有现在已经完成的所有工作。
+**Interpretation:** Verify that the prompt is privacy-safe and make it directly accessible to the target Mac.
+**Inferred intent:** Deliver one authoritative prompt whose pasted copy and public-repository copy are identical.
+
+### What I did
+
+I ran `/scripts/validate-repo.ps1`, checked the Markdown diff, confirmed GitHub CLI authentication and the intended four-file scope, committed the prompt as `4c79251`, pushed `main`, and compared local and remote hashes.
+
+### Why
+
+The prompt tells Mac Codex to trust the public repository and minimum baseline. Publishing the prompt itself makes the handoff inspectable and avoids drift between chat text and maintained instructions.
+
+### What worked
+
+Repository validation passed with 152 files, 5 local skills, and no forbidden artifacts or obvious secrets. GitHub accepted the commit, and local and remote both resolved to `4c79251f77e074bbabdb5970a777495741406378`.
+
+### What didn't work
+
+No validation or publication failure occurred.
+
+### What I learned
+
+The safest copy-paste artifact is still a repository-maintained prompt: users can paste it immediately while another Codex instance can independently verify its origin and minimum implementation commit.
+
+### What was tricky
+
+The prompt must authorize useful autonomous progress without broadening authority to overwrite a dirty checkout, install Homebrew, expose private vault content, or claim editor tests passed when macOS marks them `not_checked`.
+
+### What warrants review
+
+On the target Mac, verify that Codex reports the exact source commit, installed skill hash, test count, private starter location, and any Word/WPS backend marked `not_checked`.
+
+### Future work
+
+No repository work remains. Paste the published prompt into Mac Codex and let it execute the acceptance checklist.
