@@ -134,6 +134,7 @@ codex/README.md
 prompts/01-setup-obsidian.md ... 04-run-first-research.md
 prompts/05-setup-publication-formatting.md
 prompts/06-setup-originality-revision.md
+prompts/07-macos-sync-originality-v1.2.zh-CN.md
 codex/skills/revise-originality-with-evidence/
 codex/skills/format-submission-manuscript/
 docs/component-lock.json
@@ -179,6 +180,7 @@ cd zotero-obsidian-codex-word-wps-workflow
 4. [`prompts/04-run-first-research.md`](prompts/04-run-first-research.md)
 5. [`prompts/05-setup-publication-formatting.md`](prompts/05-setup-publication-formatting.md)
 6. [`prompts/06-setup-originality-revision.md`](prompts/06-setup-originality-revision.md)
+7. [`prompts/07-macos-sync-originality-v1.2.zh-CN.md`](prompts/07-macos-sync-originality-v1.2.zh-CN.md) — 已打通 Zotero、Obsidian、Word、WPS 的 Mac 增量部署
 
 这些提示词要求 Codex 检查真实操作系统、从官方来源查找应用和插件、保护已有用户数据、
 配置本机运行环境并完成运行验证。不需要复刻 ZIP 或预打包安装程序。

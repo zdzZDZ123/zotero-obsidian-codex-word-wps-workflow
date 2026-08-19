@@ -157,6 +157,7 @@ codex/README.md
 prompts/01-setup-obsidian.md ... 04-run-first-research.md
 prompts/05-setup-publication-formatting.md
 prompts/06-setup-originality-revision.md
+prompts/07-macos-sync-originality-v1.2.zh-CN.md
 codex/skills/revise-originality-with-evidence/
 codex/skills/format-submission-manuscript/
 docs/component-lock.json
@@ -204,6 +205,7 @@ Then give the deployment prompts to Codex in order:
 4. [`prompts/04-run-first-research.md`](prompts/04-run-first-research.md)
 5. [`prompts/05-setup-publication-formatting.md`](prompts/05-setup-publication-formatting.md)
 6. [`prompts/06-setup-originality-revision.md`](prompts/06-setup-originality-revision.md)
+7. [`prompts/07-macos-sync-originality-v1.2.zh-CN.md`](prompts/07-macos-sync-originality-v1.2.zh-CN.md) — incremental Mac deployment when Zotero, Obsidian, Word, and WPS are already connected
 
 The prompts instruct Codex to inspect the actual operating system, find each
 official application/plugin source, preserve existing user data, configure the
